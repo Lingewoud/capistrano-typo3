@@ -1,7 +1,2 @@
-require "capistrano/typo3/version"
-
-module Capistrano
-  module Typo3
-    # Your code goes here...
-  end
-end
+load File.expand_path('../tasks/typo3.cap', __FILE__)
+load File.expand_path('../tasks/deploy.cap', __FILE__)
