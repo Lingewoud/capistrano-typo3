@@ -1,2 +1,11 @@
 # vim: ft=ruby:sts=2:expandtab
+namespace :deploy do
+  desc "display last revision log line"
+  task :last_revision do
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)} && tail -n1 revisions.log"
+    end
+  end
 
+  after :finishing, 'typo3:after_deploy'
+end

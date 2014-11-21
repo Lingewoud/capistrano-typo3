@@ -1,0 +1,44 @@
+# vim: ft=ruby:sts=2:expandtab
+# -- OVERRIDES
+# Save this file as lib/capistrano/tasks/git.cap
+namespace :git do
+
+  desc 'Copy repo to releases'
+  task create_release: :'git:update' do
+    on roles(:all) do
+      with fetch(:git_environmental_variables) do
+        within repo_path do
+          execute :git, :clone, '-b', fetch(:branch), '--recursive', '.', release_path
+        end
+      end
+    end
+  end
+
+  desc "Show last git commit"
+  task :last_commit do
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)} && rake cap:git_last_commit"
+    end
+  end
+
+  desc 'pending commits since last release'
+  task :pending do
+    revline=''
+    on roles :all do
+      revline = capture("tail -n1 #{fetch(:deploy_to)}/revisions.log")
+    end
+    githash =revline.split("(at")[1].split(")")[0]
+
+    system("git clone -n #{repo_url} /tmp/cap_pending")
+    print `cd /tmp/cap_pending && git log #{githash}..HEAD`
+    system("rm -Rf /tmp/cap_pending")
+  end
+
+  desc 'pending commits since [commithash]'
+  task :pending_since , :commithash do |t, args|
+    githash = args[:commithash]
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)}/current && git log #{githash}..HEAD"
+    end
+  end
+end
