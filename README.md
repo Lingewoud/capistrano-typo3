@@ -1,6 +1,25 @@
 # Capistrano::Typo3
 
-TODO: Write a gem description
+**Note: this plugin works only with Capistrano 3.** Please check the capistrano
+gem version you're using before installing this gem:
+`$ bundle show | grep capistrano`
+
+Capistrano deployment tasks for TYPO3 CMS. Incl. TYPO3 versions 4.5.x ... 6.2.x.
+
+## Compatibility
+
+The versions below have been tested with capistrano-typo3
+
+* 4.5.x
+* 4.6.x
+* 4.7.x
+* 6.2.x
+
+##  Configuration
+
+:keep_git For development environments. If set 1 a kickstart keep the orginal .git directory so changes can be commited. 
+default 0
+set :keep_git, 1
 
 ## Installation
 
@@ -22,6 +41,16 @@ Or install it yourself as:
 
 TODO: Write usage instructions here
 
+## References / inspiration
+* https://github.com/programmerqeu/capistrano-typo3-cms
+* http://webdesign.about.com/od/servers/qt/web-servers-and-workflow.htm
+* https://marketpress.com/2013/deploying-wordpress-with-git-and-capistrano/
+* http://www.slideshare.net/jsegars/site-development-processes-for-small-teams
+* http://www.zodiacmedia.co.uk/blog/capistrano-3-tutorial-series-part-2
+* http://www.slideshare.net/aoemedia/2013-11-typo3-camp-pl
+* http://stackoverflow.com/questions/9860593/deploying-multiple-applications-into-a-single-tree-with-capistrano-and-git
+* http://stackoverflow.com/questions/11905360/how-best-to-manage-typo3-installations-using-git
+
 ## Contributing
 
 1. Fork it ( https://github.com/[my-github-username]/capistrano-typo3/fork )
@@ -29,3 +58,4 @@ TODO: Write usage instructions here
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create a new Pull Request
+
