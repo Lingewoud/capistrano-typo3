@@ -1,9 +1,13 @@
 # CHANGELOG
 
+## capistrano-typo3 0.2.1
+* new init tasks and rename setup to init
+* code cleanup
+* use new rake-typo3 repository in place of deployTYPO3
+
 ## capistrano-typo3 0.2.0
 * new official name, 
 * publishing to rubygems
-* new init tasks and rename setup to init
 * add typo3 db migrations
 * add pre and post tests
 * update src after deploy
