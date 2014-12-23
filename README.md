@@ -1,4 +1,4 @@
-# Capistrano::Typo3
+# Capistrano::Typo3 [![Code Climate](https://codeclimate.com/github/mipmip/capistrano-typo3/badges/gpa.svg)](https://codeclimate.com/github/mipmip/capistrano-typo3)
 
 **Note: this plugin works only with Capistrano 3.** Please check the capistrano
 gem version you're using before installing this gem:
@@ -17,9 +17,8 @@ The versions below have been tested with capistrano-typo3
 
 ##  Configuration
 
-:keep_git For development environments. If set 1 a kickstart keep the orginal .git directory so changes can be commited. 
-default 0
-set :keep_git, 1
+At the top of lib/capistrano/tasks/typo3.cap all variables are listed
+and set to a default value.
 
 ## Installation
 

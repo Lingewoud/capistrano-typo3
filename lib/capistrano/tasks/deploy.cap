@@ -1,5 +1,6 @@
 # vim: ft=ruby:sts=2:expandtab
 namespace :deploy do
+
   desc "display last revision log line"
   task :last_revision do
     on roles(:all) do
@@ -7,5 +8,5 @@ namespace :deploy do
     end
   end
 
-  after :finishing, 'typo3:after_deploy'
+  after :finishing, 'typo3:hooks:after_deploy'
 end

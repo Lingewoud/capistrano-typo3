@@ -41,4 +41,15 @@ namespace :git do
       execute "cd #{fetch(:deploy_to)}/current && git log #{githash}..HEAD"
     end
   end
+
+  # restore remote git url for developent environments
+  task :set_remote_url_no_cache do
+    if(fetch(:git_no_cache)==1)
+      on roles(:all) do
+        execute "cd #{fetch(:deploy_to)}/current/ && git remote set-url origin #{fetch(:repo_url)}"
+      end
+    end
+  end
+
+
 end
