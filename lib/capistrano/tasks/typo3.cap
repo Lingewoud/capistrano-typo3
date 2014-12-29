@@ -44,9 +44,9 @@ namespace :typo3 do
       execute "cd #{fetch(:deploy_to)}/current/ && touch deploy/migrations/.keep"
       execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p dummy/typo3conf/ext"
       execute "cd #{fetch(:deploy_to)}/current/ && touch dummy/typo3conf/ext/index.html"
-      execute "cd #{fetch(:deploy_to)} && cp config/gitignore current/.gitignore"
     end
 
+    invoke 'typo3:helper:create_gitignore'
     invoke 'typo3:helper:upgrade_source'
     print "initial environment has been setup"
   end
@@ -274,8 +274,27 @@ namespace :typo3 do
       end
     end
 
-    # remove deploy_to directory
-    task "create_typo3yaml" do
+    task :create_gitignore do
+      on roles(:all) do
+
+        ignorestring  = "
+.DS_Store
+._.DS_Store
+*~
+*.swp
+*.swo
+ENABLE_INSTALL_TOOL
+VERSION
+temp_CACHE*.php
+deprecation_*.log
+"
+
+        contents = StringIO.new(ignorestring)
+        upload! contents, "#{fetch(:deploy_to)}/current/.gitignore"
+      end
+    end
+
+    task :create_typo3yaml do
 
       on roles(:all) do
 
@@ -411,41 +430,4 @@ namespace :test do
       #test chowns
     end
   end
-
-  namespace :depreciated do
-
-    #desc "Setup a new staged typo3 environment for the first time"
-    task :setup_fase1 do
-      on roles(:all) do
-        execute "rm -Rf #{fetch(:deploy_to)}"
-      end
-
-      invoke 'typo3:helper:install_or_update_rake_typo3'
-
-      #create releases and shared
-      invoke 'deploy:check'
-      invoke 'deploy:updating'
-      invoke 'typo3:helper:current_relative_symlink'
-
-      on roles(:all) do
-        execute "cd #{fetch(:deploy_to)} && mkdir -p shared/fileadmin shared/typo3temp shared/uploads"
-        execute "echo '#{fetch(:stage).to_s}' > #{fetch(:deploy_to)}/STAGE"
-      end
-
-      #if keep_git
-      on roles(:all) do
-        execute "cd #{fetch(:deploy_to)}/current/ && git remote set-url origin #{fetch(:repo_url)}"
-        execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p deploy/patches"
-        execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p deploy/migrations"
-        execute "cd #{fetch(:deploy_to)} && cp config/typo3.sample.yml current/deploy/typo3.yml"
-        execute "cd #{fetch(:deploy_to)} && cp config/gitignore current/.gitignore"
-      end
-
-      invoke 'typo3:helper:upgrade_source'
-
-      print "\ninitial environment has been setup to fase 1. edit current/deploy/typo3.yml\n"
-      print "\nand populate current with the dummy\n"
-    end
-  end
-
 end
