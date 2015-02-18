@@ -1,8 +1,5 @@
 # vim: ft=ruby:sts=2:expandtab
 
-# lock '3.1.0'
-# require "pp"
-
 #----- DEFAULT SETTINGS, OVERRIDE WHEN NEEDED
 
 set :git_no_cache, 0
@@ -12,6 +9,7 @@ set :rake_executable, "./bin/rake"
 set :rake_mysql_exec_dir, "/usr/bin"
 set :rake_php_executable, "/usr/bin/php"
 set :t3_dont_upgrade_source, 0
+set :t3_alternative_source_url, nil
 
 #----- INTERNAL VARIABLES, DON'T CHANGE OR OVERRIDE THESE
 set :hooks_before_suite_run, 0
@@ -323,6 +321,12 @@ deprecation_*.log
           t3yaml[stage]['TYPO3_CONF_VARS'] = fetch(:t3_conf_vars)
           t3yaml[stage]['TYPO3_CONF_VARS_EXT_EXTCONF'] = fetch(:t3_conf_vars_ext_extconf)
           t3yaml[stage]['TYPO3_SOURCE_PATCHES'] = fetch(:t3_source_patches)
+
+          if !fetch(:t3_alternative_source_url).nil?
+            t3yaml[stage]['TYPO3_ALTERNATIVE_SOURCE_URL'] = fetch(:t3_alternative_source_url)
+          end
+
+
           t3yaml[stage]['DISABLE_EXTENSIONS'] = fetch(:t3_disable_extensions)
           t3yaml[stage]['FILE_SEARCH_REPLACE'] = fetch(:t3_file_search_replace)
 

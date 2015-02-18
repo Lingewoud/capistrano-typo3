@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## capistrano-typo3 0.2.3 2015-02-18
+- update dependencies
+
 ## capistrano-typo3 0.2.2
 - always use use ./bin/rake
 - always flush content cache after sync
