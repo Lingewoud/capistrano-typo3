@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## capistrano-typo3 0.2.4 2015-03-09
+- add clear all cache task
+
 ## capistrano-typo3 0.2.3 2015-02-18
 - update dependencies
 
