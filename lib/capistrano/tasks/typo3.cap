@@ -130,6 +130,14 @@ namespace :typo3 do
     invoke('typo3:hooks:after_suite')
   end
 
+  desc "Clear all db and file content and config cache"
+  task :clear_all_cache do
+    invoke 'typo3:helper:flush_content_cache'
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:flush_cache"
+    end
+  end
+
   #  desc "Run site presuite rspecs"
   task :rspec_pre_suite do
     on roles(:all) do
