@@ -4,16 +4,15 @@
 gem version you're using before installing this gem:
 `$ bundle show | grep capistrano`
 
-Capistrano deployment tasks for TYPO3 CMS. Incl. TYPO3 versions 4.5.x ... 6.2.x.
+Capistrano deployment tasks for TYPO3 CMS
 
 ## Compatibility
 
 The versions below have been tested with capistrano-typo3
 
-* 4.5.x
-* 4.6.x
-* 4.7.x
 * 6.2.x
+* 7.0.x
+* 7.6.x
 
 ##  Configuration
 

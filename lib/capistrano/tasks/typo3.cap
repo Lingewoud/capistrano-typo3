@@ -10,10 +10,192 @@ set :rake_mysql_exec_dir, "/usr/bin"
 set :rake_php_executable, "/usr/bin/php"
 set :t3_dont_upgrade_source, 0
 set :t3_alternative_source_url, nil
+set :t3_main_version, '7.6'
 
 #----- INTERNAL VARIABLES, DON'T CHANGE OR OVERRIDE THESE
 set :hooks_before_suite_run, 0
 set :install_or_update_rake_typo3_run, 0
+
+#CONFIG = {}
+
+namespace :homestead do
+
+  desc "setup homestead"
+  task "setup_machine" do
+
+    sh "rm -Rf var-www"
+    sh "mkdir -p var-www"
+
+    ### DOWNLOAD TYPO3.Homestead
+    unless File.exists? "Configuration/vagrant.yml"
+      sh "mkdir -p Configuration"
+      sh "cd Configuration && curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Configuration/vagrant.yml"
+    end
+
+    sh "curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Vagrantfile"
+    sh "curl https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/README.md > README.Homestead.md"
+
+    ### Vagrant up
+    sh "vagrant up"
+
+    on roles(:all) do
+      execute "sudo aptitude update"
+      execute "sudo aptitude install ruby-dev make -y"
+      execute "sudo gem install bundler"
+
+      execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+      execute "sudo echo 'THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site' > /var/www/index.php"
+    end
+
+  end
+
+  desc "setup homestead"
+  task "setup_site" do
+
+    invoke 'deploy'
+    invoke 'typo3:helper:setup_shared_typo3_dirs' #PORTED_2_CAP
+    invoke 'homestead:fixknownhosts' #PORTED_2_CAP
+    invoke 'homestead:syncdb' #PORTED_2_CAP
+    invoke 'homestead:syncfiles' #PORTED_2_CAP
+
+    #invoke 'typo3:helper:install_or_update_rake_typo3' #DEPR
+    if(fetch(:install_or_update_rake_typo3_run)==0)
+      on roles(:all) do
+
+        execute "git clone https://github.com/t3labcom/rake-typo3.git #{fetch(:deploy_to)}/.clone"
+        execute "cd #{fetch(:deploy_to)}/.clone && mv ./* ../"
+        execute "cd #{fetch(:deploy_to)} && rm -Rf .bundle"
+        execute "cd #{fetch(:deploy_to)} && #{fetch(:bundle_executable)} install --binstubs"
+        print "rake-typo3 has been installed"
+        set :install_or_update_rake_typo3_run, 1
+      end
+    end
+
+    invoke 'typo3:helper:create_typo3yaml' #DEPR
+    invoke 'typo3:helper:set_stage' #DEPR
+
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:truncate_cache_tables"
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:truncate_session_tables"
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:flush_cache" #EASY
+    end
+
+    #invoke 'typo3:helper:run_filesearchandreplace'
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_file_searchreplace_updates"
+    end
+
+    #invoke 'typo3:helper:update_localconf'
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_db_credentials"
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_typo3conf_vars"
+#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_disable_extensions" #NOT WORKING AND DEPR
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_extconf_settings"
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:flush_config_cache" #EASY
+    end
+
+    invoke 'typo3:helper:upgrade_source' #PORTED_2_CAP
+
+    #invoke 'typo3:helper:db_em_migrations'
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:db_migrate"
+    end
+
+    #invoke 'typo3:helper:run_migrations' #NOT WORKING
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_migrations"
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_sql_updates"
+    end
+
+    invoke 'typo3:helper:current_relative_symlink' #PORTED_2_CAP
+    on roles(:all) do
+      execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/local\\.typo3\\.org\\/current\\/dummy\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+    end
+
+    invoke 'typo3:helper:restart_webserver' #PORTED_2_CAP
+
+    sh "ln -s var-www/local.typo3.org/current local.typo3.org"
+
+    print <<MSG
+
+    ----------------------------------------------------------------------
+    The website seems to be succesfully installed in the Homestead Vagrant
+    machine.
+
+    Open the site at http://local.typo3.org"
+
+    And live edit the website via the shortcut local.typo3.org in this
+    directory
+    ----------------------------------------------------------------------
+MSG
+
+  end
+
+  task "fixknownhosts" do
+    on roles(:all) do
+      execute "ssh -o PasswordAuthentication=no -o StrictHostKeyChecking=no #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} uptime"
+    end
+  end
+
+  desc "syncdb"
+  task "syncdb" do
+    on roles(:all) do
+      begin
+        execute "sudo mysqladmin create #{fetch(:dbname)}"
+      rescue
+        print "DB Already exists\n"
+      end
+
+      execute <<DBSYNC
+        ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
+          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+      #{fetch(:t3_live_sync)['dbsync']['dbname']} \
+          | mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)}
+DBSYNC
+    end
+  end
+
+  desc "syncfiles"
+  task "syncfiles" do
+    on roles(:all) do
+
+      if fetch(:t3_live_sync)['filesync']
+        fetch(:t3_live_sync)['filesync'].each do |key,command|
+          execute "cd #{fetch(:deploy_to)} && #{command}"
+        end
+      end
+
+    end
+  end
+
+  desc "purge homestead and vagrant files, keep vagrant.yml"
+  task "purge_machine" do
+    sh "vagrant destroy"
+    sh "rm -Rf .vagrant Vagrantfile README.Homestead.md"
+  end
+
+  desc "purge homestead site and database"
+  task "purge_site" do
+    on roles(:all) do
+      execute "rm -Rf #{fetch(:deploy_to)}"
+      begin
+        execute "sudo mysqladmin -f drop #{fetch(:dbname)}"
+      rescue
+        print "DB did not exist\n"
+      end
+
+      execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+      execute "sudo echo 'THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site' > /var/www/index.php"
+    end
+
+    invoke 'typo3:helper:restart_webserver' #PORTED_2_CAP
+
+    sh "rm -f local.typo3.org"
+  end
+
+end
 
 namespace :typo3 do
 
@@ -23,7 +205,7 @@ namespace :typo3 do
   # From here:
   # - a new TYPO3 enviroment can be created
   # - an existing TYPO3 environment can be imported in this module
-  desc "init a initial dev environment"
+  desc "init a initial EMPTY dev environment"
   task :init1_empty_dummy do
 
     invoke 'typo3:helper:rm_deploy_to'
@@ -50,12 +232,12 @@ namespace :typo3 do
   end
 
   #  desc "init step 2: install a fresh TYPO3 in the designated version"
-  task :init2_install_typo3 do
-    print "SORRY NOT YET IMPLEMENTED"
-  end
+  #task :init2_install_typo3 do
+  #  print "SORRY NOT YET IMPLEMENTED"
+  #end
 
-  desc "init step 2: clone from extisting TYPO3 environment"
-  task :init2_install_typo3 do
+  desc "clone from extisting TYPO3 environment"
+  task :init_clone_from_flat_typo3 do
 
     print "\nNOTE: When this task fails most times there is a problem with your ssh authorized public keys\n\n"
 
@@ -76,7 +258,7 @@ namespace :typo3 do
     invoke 'typo3:hooks:after_suite'
   end
 
-  desc "Setup a new production environment. Manually sync content from old production"
+  desc "Setup a new production environment. Don't sync content from old production"
   task :init3_setup_new_stage_no_sync do
     invoke 'typo3:helper:rm_deploy_to'
     invoke 'typo3:hooks:before_suite'
@@ -258,7 +440,7 @@ namespace :typo3 do
             if remote.include?('deploy')
               print "removing old repository"
               execute "cd  #{fetch(:deploy_to)} && rm -Rf .bundle config docs lib log spec .gitignore .rspec .travis.yml CHANGELOG.md Gemfile Gemfile.lock README.md Rakefile.rb VERSION .git"
-              execute "git clone https://github.com/Lingewoud/rake-typo3.git #{fetch(:deploy_to)}/.clone"
+              execute "git clone https://github.com/t3labcom/rake-typo3.git #{fetch(:deploy_to)}/.clone"
               execute "cd #{fetch(:deploy_to)}/.clone && mv ./* ../"
               execute "cd #{fetch(:deploy_to)}/.clone && mv .bundle .git .gitignore .rspec .travis.yml ../"
             end
@@ -268,7 +450,7 @@ namespace :typo3 do
 
           else
             execute "rm -Rf #{fetch(:deploy_to)}"
-            execute "git clone https://github.com/Lingewoud/rake-typo3.git #{fetch(:deploy_to)}"
+            execute "git clone https://github.com/t3labcom/rake-typo3.git #{fetch(:deploy_to)}"
             execute "cd #{fetch(:deploy_to)} && #{fetch(:bundle_executable)} install --binstubs"
             print "rake-typo3 has been installed"
           end
@@ -359,7 +541,7 @@ deprecation_*.log
         execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_typo3conf_vars"
         execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_disable_extensions"
         execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_extconf_settings"
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:flush_config_cache"
+        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:flush_config_cache" #EASY
       end
     end
 
@@ -388,17 +570,40 @@ deprecation_*.log
       end
     end
 
-    #desc "Upgrade TYPO3 source in environment to latest minor version"
+    desc "Upgrade TYPO3 source in environment to latest minor version"
     task :upgrade_source do
 
-      if(fetch(:t3_dont_upgrade_source)!=1)
+      version = Typo3Helper.typo3_last_version fetch(:t3_main_version)
+      download_link = "https://get.typo3.org/#{version}"
 
+      unless fetch(:t3_dont_upgrade_source) ==1
         on roles(:all) do
-          execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_typo3_source"
+          execute "cd #{fetch(:deploy_to)} && mkdir -p typo3source"
+          execute "cd #{fetch(:deploy_to)}/typo3source && (tar tzvf typo3_src-#{version}.tar.gz > /dev/null && [ $? -eq 0 ] || curl -L -o typo3_src-#{version}.tar.gz #{download_link})"
+          execute "cd #{fetch(:deploy_to)}/current/dummy && rm -Rf typo3_src index.php typo3"
+          execute("cd #{fetch(:deploy_to)}/current/dummy && tar xzf #{fetch(:deploy_to)}/typo3source/typo3_src-#{version}.tar.gz")
+          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -s typo3_src-#{version} typo3_src")
+          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -s typo3_src/index.php index.php")
+          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -s typo3_src/typo3 typo3")
+
+          #LINK SHARED
+          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -sf ../../../shared/fileadmin fileadmin")
+          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -sf ../../../shared/typo3temp typo3temp")
+          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -sf ../../../shared/uploads uploads")
+
+          #TODO REPLACE RAKE-TYPO3
+          execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} sub:apply_patches"
+
+          begin
+            if execute("cd #{fetch(:deploy_to)}/current/dummy && head typo3_src/index.php")
+              print "\nsource has been upgraded"
+              print "\n\nWARNING: YOU MUST RUN THE UPGRADE SCRIPTS IN BACKEND\n\n"
+            end
+          rescue
+            raise "WARNING, TYPO3_SRC IS NOT ACCESSIBLE! FIX IT"
+          end
         end
 
-        print "\nsource has been upgraded"
-        print "\n\nWARNING: YOU MUST RUN THE UPGRADE SCRIPTS IN BACKEND\n\n"
       end
     end
 
@@ -408,38 +613,5 @@ deprecation_*.log
       end
     end
 
-  end
-end
-
-
-namespace :test do
-  task :test_pre_setup do
-    on roles(:all) do
-      # test apache restart is allowed
-      # test ssh access to live server is allowed
-      # test stage is configured in typo3.yml
-    end
-  end
-
-  task :test_post_setup do
-    on roles(:all) do
-      # test if dummy index.php is readable, correctly linked
-      # temp cache files are removed
-    end
-  end
-
-  task :test_pre_deploy do
-    #if production test if repo is dirty
-    on roles(:all) do
-    end
-  end
-  task :test_post_deploy do
-    on roles(:all) do
-      #test symlinks
-      #test source version
-      #test database connection
-      #test chmods
-      #test chowns
-    end
   end
 end
