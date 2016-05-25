@@ -114,7 +114,7 @@ namespace :homestead do
 
     invoke 'typo3:helper:restart_webserver' #PORTED_2_CAP
 
-    sh "ln -s var-www/local.typo3.org/current local.typo3.org"
+    sh "ln -fs var-www/local.typo3.org/current local.typo3.org"
 
     print <<MSG
 
@@ -173,6 +173,7 @@ DBSYNC
   desc "purge homestead and vagrant files, keep vagrant.yml"
   task "purge_machine" do
     sh "vagrant destroy"
+    sh "rm -f local.typo3.org"
     sh "rm -Rf .vagrant Vagrantfile README.Homestead.md"
   end
 
@@ -530,8 +531,8 @@ deprecation_*.log
     # when not in deploy latest ls releases/ -1 | sort -r | head -n 1
     task :current_relative_symlink do
       on roles(:all) do
-        execute "rm -f #{current_path}"
-        execute "cd #{fetch(:deploy_to)} && ln -s releases/#{File.basename release_path} current"
+        execute "cd #{fetch(:deploy_to)} && rm -f current"
+        execute "cd #{fetch(:deploy_to)} && ln -s releases/`ls -1 releases/ | sort -r | head -n 1` current"
       end
     end
 
