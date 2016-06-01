@@ -58,7 +58,6 @@ namespace :homestead do
     #invoke 'typo3:helper:install_or_update_rake_typo3' #DEPR
     if(fetch(:install_or_update_rake_typo3_run)==0)
       on roles(:all) do
-
         execute "git clone https://github.com/t3labcom/rake-typo3.git #{fetch(:deploy_to)}/.clone"
         execute "cd #{fetch(:deploy_to)}/.clone && mv ./* ../"
         execute "cd #{fetch(:deploy_to)} && rm -Rf .bundle"
@@ -132,7 +131,7 @@ MSG
     end
   end
 
-  #desc "syncdb"
+  desc "syncdb"
   task "syncdb" do
     on roles(:all) do
       begin
@@ -149,6 +148,7 @@ MSG
       #{fetch(:t3_live_sync)['dbsync']['dbname']} \
           | mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)}
 DBSYNC
+      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_sql_updates"
     end
   end
 
@@ -332,7 +332,7 @@ namespace :typo3 do
 
   desc "Make db & files in env. identical to production"
   task :sync_from_production do
-    invoke 'typo3:hooks:before_suite'
+#    invoke 'typo3:hooks:before_suite'
     invoke 'typo3:helper:sync_files_from_production'
     invoke 'typo3:helper:sync_db_from_production'
     invoke 'typo3:helper:flush_content_cache'
