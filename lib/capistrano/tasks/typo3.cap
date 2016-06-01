@@ -16,8 +16,6 @@ set :t3_main_version, '7.6'
 set :hooks_before_suite_run, 0
 set :install_or_update_rake_typo3_run, 0
 
-#CONFIG = {}
-
 namespace :homestead do
 
   desc "setup homestead"
@@ -56,7 +54,6 @@ namespace :homestead do
     invoke 'typo3:helper:setup_shared_typo3_dirs' #PORTED_2_CAP
     invoke 'homestead:fixknownhosts' #PORTED_2_CAP
     invoke 'homestead:syncdb' #PORTED_2_CAP
-    invoke 'homestead:syncfiles' #PORTED_2_CAP
 
     #invoke 'typo3:helper:install_or_update_rake_typo3' #DEPR
     if(fetch(:install_or_update_rake_typo3_run)==0)
@@ -96,12 +93,10 @@ namespace :homestead do
 
     invoke 'typo3:helper:upgrade_source' #PORTED_2_CAP
 
-    #invoke 'typo3:helper:db_em_migrations'
     on roles(:all) do
       execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:db_migrate"
     end
 
-    #invoke 'typo3:helper:run_migrations' #NOT WORKING
     on roles(:all) do
       execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_migrations"
       execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_sql_updates"
@@ -137,7 +132,7 @@ MSG
     end
   end
 
-  desc "syncdb"
+  #desc "syncdb"
   task "syncdb" do
     on roles(:all) do
       begin
@@ -157,8 +152,8 @@ DBSYNC
     end
   end
 
-  desc "syncfiles"
-  task "syncfiles" do
+  desc "sync_files"
+  task "sync_files" do
     on roles(:all) do
 
       if fetch(:t3_live_sync)['filesync']
@@ -571,18 +566,22 @@ deprecation_*.log
       end
     end
 
+
+
+
     desc "Upgrade TYPO3 source in environment to latest minor version"
     task :upgrade_source do
-
-      version = Typo3Helper.typo3_last_version fetch(:t3_main_version)
-      download_link = "https://get.typo3.org/#{version}"
-
       unless fetch(:t3_dont_upgrade_source) ==1
+        version = Typo3Helper.typo3_last_version fetch(:t3_main_version)
+        download_link = "https://get.typo3.org/#{version}"
+
         on roles(:all) do
           execute "cd #{fetch(:deploy_to)} && mkdir -p typo3source"
           execute "cd #{fetch(:deploy_to)}/typo3source && (tar tzvf typo3_src-#{version}.tar.gz > /dev/null && [ $? -eq 0 ] || curl -L -o typo3_src-#{version}.tar.gz #{download_link})"
           execute "cd #{fetch(:deploy_to)}/current/dummy && rm -Rf typo3_src index.php typo3"
           execute("cd #{fetch(:deploy_to)}/current/dummy && tar xzf #{fetch(:deploy_to)}/typo3source/typo3_src-#{version}.tar.gz")
+
+          #LINK SOURCE STUFF
           execute("cd #{fetch(:deploy_to)}/current/dummy && ln -s typo3_src-#{version} typo3_src")
           execute("cd #{fetch(:deploy_to)}/current/dummy && ln -s typo3_src/index.php index.php")
           execute("cd #{fetch(:deploy_to)}/current/dummy && ln -s typo3_src/typo3 typo3")
@@ -604,6 +603,8 @@ deprecation_*.log
             raise "WARNING, TYPO3_SRC IS NOT ACCESSIBLE! FIX IT"
           end
         end
+      else
+        p "dont do anything"
 
       end
     end
