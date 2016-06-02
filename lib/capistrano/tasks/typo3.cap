@@ -44,7 +44,6 @@ namespace :homestead do
       execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
       execute "sudo echo 'THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site' > /var/www/index.php"
     end
-
   end
 
   desc "setup homestead"
@@ -53,9 +52,8 @@ namespace :homestead do
     invoke 'deploy'
     invoke 'typo3:helper:setup_shared_typo3_dirs' #PORTED_2_CAP
     invoke 'homestead:fixknownhosts' #PORTED_2_CAP
-    invoke 'homestead:syncdb' #PORTED_2_CAP
+    invoke 'homestead:sync_database' #PORTED_2_CAP
 
-    #invoke 'typo3:helper:install_or_update_rake_typo3' #DEPR
     if(fetch(:install_or_update_rake_typo3_run)==0)
       on roles(:all) do
         execute "git clone https://github.com/t3labcom/rake-typo3.git #{fetch(:deploy_to)}/.clone"
@@ -131,8 +129,8 @@ MSG
     end
   end
 
-  desc "syncdb"
-  task "syncdb" do
+  desc "Sync Database with live database and modify for homestead use."
+  task "sync_database" do
     on roles(:all) do
       begin
         execute "sudo mysqladmin create #{fetch(:dbname)}"
