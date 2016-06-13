@@ -52,9 +52,9 @@ namespace :homestead do
     invoke 'deploy'
     invoke 'typo3:helper:setup_shared_typo3_dirs' #PORTED_2_CAP
     invoke 'homestead:fixknownhosts' #PORTED_2_CAP
-    invoke 'homestead:sync_database' #PORTED_2_CAP
 
     if(fetch(:install_or_update_rake_typo3_run)==0)
+      p "installing old rake-lib"
       on roles(:all) do
         execute "git clone https://github.com/t3labcom/rake-typo3.git #{fetch(:deploy_to)}/.clone"
         execute "cd #{fetch(:deploy_to)}/.clone && mv ./* ../"
@@ -64,6 +64,8 @@ namespace :homestead do
         set :install_or_update_rake_typo3_run, 1
       end
     end
+
+    invoke 'homestead:sync_database' #PORTED_2_CAP
 
     invoke 'typo3:helper:create_typo3yaml' #DEPR
     invoke 'typo3:helper:set_stage' #DEPR
