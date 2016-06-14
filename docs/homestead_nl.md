@@ -57,9 +57,9 @@ Maak een nieuwe profiel en vul de bestanden zoals hierboven. Het
 password veld van de database moet gevuld worden met ```supersecret```.
 De SSH Private is bij het maken van de machine gegenereerd. De ssh key
 staat in de verborgen map
-```[T3-project]/.vagrant/machines/default/virtualbox/private_key```
+[T3-project]/.vagrant/machines/default/virtualbox/private_key
 
-kopieer het volledige pad van de private key en plak deze in Sequel Pro.
+Kopieer het volledige pad van de private key en plak deze in Sequel Pro.
 
 Als de vagrant machine draait geeft dit profiel toegang tot alle
 databases.
