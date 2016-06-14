@@ -37,7 +37,18 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+### Quickstart
+
+To get started with capistrano-typo3 we advise you to start with
+the
+[capistrano-typo3-boilerplate](https://github.com/t3labcom/capistrano-typo3-boilerplate).
+You can find a quickstart tutorial here
+[capistrano-typo3-boilerplate](https://github.com/t3labcom/capistrano-typo3-boilerplate).
+
+### TYPO3.Homestead
+
+Capistrano-typo3 integrates TYPO3.Homestead. Here's the [Dutch documentation](docs/homestead_nl.md)
+about this integrations. English version will hopefully follow soon.
 
 ## References / inspiration
 * https://github.com/programmerqeu/capistrano-typo3-cms
