@@ -16,8 +16,8 @@ Capistrano deployment tasks for TYPO3 CMS
 The versions below have been tested with capistrano-typo3
 
 * 6.2.x
-* 7.0.x
-* 7.6.x
+* 7.x
+* 8.x
 
 ##  Configuration
 

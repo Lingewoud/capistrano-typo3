@@ -173,7 +173,7 @@ namespace :typo3 do
   namespace :hooks do
     task :after_deploy do
         invoke 'git:set_remote_url_no_cache'
-        invove 'typo3:helper:execute_post_deployment_commands'
+        invoke 'typo3:helper:execute_post_deployment_commands'
     end
   end
 
