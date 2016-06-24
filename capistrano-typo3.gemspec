@@ -8,9 +8,9 @@ Gem::Specification.new do |spec|
   spec.version       = Capistrano::Typo3::VERSION
   spec.authors       = ["Pim Snel"]
   spec.email         = ["pim@lingewoud.nl"]
-  spec.summary       = %q{Capistrano 3 tasks for TYPO3 CMS}
-  spec.description   = %q{Capistrano 3 tasks for TYPO3 CMS. Incl. TYPO3 versions 4.5.x ... 6.2.x.}
-  spec.homepage      = "https://github.com/mipmip/capistrano-typo3"
+  spec.summary       = %q{Capistrano 3 tasks and CI for TYPO3}
+  spec.description   = %q{Capistrano 3 deployment and continious delivery tasks for TYPO3 versions 6.2+, 7.x, 8.x}
+  spec.homepage      = "https://github.com/t3labcom/capistrano-typo3"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")

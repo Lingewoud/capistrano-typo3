@@ -11,7 +11,7 @@ class DT3Logger
         @logger.level = Logger::DEBUG
       end
 
-      if( (CONFIG['DEBUG'].to_i==1 && type=='debug') || (type!='debug'))
+      if( (fetch(:debug).to_i==1 && type=='debug') || (type!='debug'))
         logstring = "#{type.upcase} - #{key}#{val==''?'':': '+val}"
         @logger.info Time.now.strftime("%b-%d-%Y %H:%M") +' '+ logstring
         print "#{logstring}\n"

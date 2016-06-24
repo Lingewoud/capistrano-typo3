@@ -159,11 +159,11 @@ class Typo3Helper
   #truncates a list of tables
   def self.truncate_tables(tables)
 
-    all_current_tables = DT3MySQL::show_tables.split("\n")
+    all_current_tables = capture DT3MySQL::show_tables.split("\n")
 
     tables.each do |table|
       if all_current_tables.include?(table)
-        DT3MySQL::truncate_table(table)
+        execute DT3MySQL::truncate_table(table)
       end
     end
   end
@@ -198,10 +198,9 @@ class Typo3Helper
   end
 
   # replaces database settings in the localconf file
-  def self.set_localconf_database_settings(db,user,password,host='localhost')
-    if(self.typo3_localconf_version == 6)
+  def self.make_set_localconf_database_settings_command(db,user,password,host='localhost')
       cmd1 = "php -r \'define(\"TYPO3_MODE\", \"BE\");" \
-        "$arr = include \"#{TYPO3_V6_LOCAL_CONF_PATH}\"; " \
+        "$arr = include \"#{fetch(:typo3_v6_local_conf_path)}\"; " \
         "echo \"<?php\\n\";" \
         "echo \"return \";" \
         "$arr[\"DB\"][\"username\"]=\"#{user}\"; " \
@@ -210,21 +209,8 @@ class Typo3Helper
         "$arr[\"DB\"][\"host\"]=\"#{host}\";" \
         "var_export($arr);" \
         "echo \";\\n?>\";\'" \
-        "> #{TYPO3_V6_LOCAL_CONF_PATH}.tmp"
-      system cmd1
-
-      cmd2 = "mv #{TYPO3_V6_LOCAL_CONF_PATH}.tmp #{TYPO3_V6_LOCAL_CONF_PATH}"
-      system cmd2
-
-    elsif(self.typo3_localconf_version == 4)
-      text = File.read(TYPO3_V4_LOCAL_CONF_PATH)
-      text = text.gsub(/^\$typo_db_password\ .*/, "$typo_db_password = '#{password}'; #{TYPO3_MODIFY_SIGNATURE}")
-      text = text.gsub(/^\$typo_db\ .*/, "$typo_db = '#{db}'; #{TYPO3_MODIFY_SIGNATURE}")
-      text = text.gsub(/^\$typo_db_host\ .*/, "$typo_db_host = '#{host}'; #{TYPO3_MODIFY_SIGNATURE}")
-      text = text.gsub(/^\$typo_db_username\ .*/, "$typo_db_username = '#{user}'; #{TYPO3_MODIFY_SIGNATURE}")
-      File.open(TYPO3_V4_LOCAL_CONF_PATH, "w") {|file| file.puts text}
-    end
-    return true
+        "> #{fetch(:typo3_v6_local_conf_path)}.tmp"
+      cmd1
   end
 
   def self.set_v4_typo3_extconf_settings(extconfvars)

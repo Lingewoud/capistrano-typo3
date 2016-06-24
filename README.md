@@ -1,3 +1,8 @@
+### WARNING CURRENT MASTER IS NOT COMPLIANT WITH BOILERPLATE AND MANUAL###
+
+updates will follow soon.
+
+
 # Capistrano::Typo3 [![Code Climate](https://codeclimate.com/github/mipmip/capistrano-typo3/badges/gpa.svg)](https://codeclimate.com/github/mipmip/capistrano-typo3)
 
 **Note: this plugin works only with Capistrano 3.** Please check the capistrano
@@ -38,6 +43,7 @@ Or install it yourself as:
 ## Usage
 
 ### Quickstart
+
 
 To get started with capistrano-typo3 we advise you to start with
 the

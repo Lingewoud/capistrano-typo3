@@ -2,6 +2,7 @@
 
 #----- DEFAULT SETTINGS, OVERRIDE WHEN NEEDED
 
+set :debug, 0
 set :git_no_cache, 0
 set :restart_webserver, "sudo /etc/init.d/apache2 restart"
 set :bundle_executable, "/usr/bin/bundle"
@@ -11,106 +12,280 @@ set :rake_php_executable, "/usr/bin/php"
 set :t3_dont_upgrade_source, 0
 set :t3_alternative_source_url, nil
 set :t3_main_version, '7.6'
+set :typo3_v6_local_conf_path, File.join('current','dummy','typo3conf','LocalConfiguration.php')
+set :t3_post_deployment_commands, []
 
 #----- INTERNAL VARIABLES, DON'T CHANGE OR OVERRIDE THESE
 set :hooks_before_suite_run, 0
 set :install_or_update_rake_typo3_run, 0
 
-namespace :homestead do
+namespace :typo3 do
 
-  desc "setup homestead"
-  task "setup_machine" do
+  # Empty repository must exist in git remote.
+  # This creates useable fresh skeleton for TYPO3
+  #
+  # From here:
+  # - a new TYPO3 enviroment can be created
+  # - an existing TYPO3 environment can be imported in this module
+#  desc "init a initial EMPTY dev environment"
+#  task :init1_empty_dummy do
+#
+#    invoke 'typo3:helper:rm_deploy_to'
+#    invoke 'typo3:hooks:before_suite'
+#
+#    invoke 'deploy:check'
+#    invoke 'deploy:updating'
+#    invoke 'typo3:helper:setup_shared_typo3_dirs'
+#    invoke 'typo3:helper:current_relative_symlink'
+#
+#    on roles(:all) do
+#      execute "cd #{fetch(:deploy_to)}/current/ && git remote set-url origin #{fetch(:repo_url)}"
+#      execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p deploy/patches"
+#      execute "cd #{fetch(:deploy_to)}/current/ && touch deploy/patches/.keep"
+#      execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p deploy/migrations"
+#      execute "cd #{fetch(:deploy_to)}/current/ && touch deploy/migrations/.keep"
+#      execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p dummy/typo3conf/ext"
+#      execute "cd #{fetch(:deploy_to)}/current/ && touch dummy/typo3conf/ext/index.html"
+#    end
+#
+#    invoke 'typo3:helper:create_gitignore'
+#    invoke 'typo3:helper:upgrade_source'
+#    print "initial environment has been setup"
+#  end
 
-    sh "rm -Rf var-www"
-    sh "mkdir -p var-www"
+#  #  desc "init step 2: install a fresh TYPO3 in the designated version"
+#  #task :init2_install_typo3 do
+#  #  print "SORRY NOT YET IMPLEMENTED"
+#  #end
+#
+#  desc "clone from extisting TYPO3 environment"
+#  task :init_clone_from_flat_typo3 do
+#
+#    print "\nNOTE: When this task fails most times there is a problem with your ssh authorized public keys\n\n"
+#
+#    invoke 'typo3:hooks:before_suite'
+#    invoke 'typo3:sync_from_production'
+#
+#    on roles(:all) do
+#
+#      execute "rsync -v #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/* #{fetch(:deploy_to)}/current/dummy/"
+#      execute "rsync -v #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/.* #{fetch(:deploy_to)}/current/dummy/"
+#      execute "rsync -av --exclude ext --exclude *.log --exclude temp*  #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/typo3conf/ #{fetch(:deploy_to)}/current/dummy/typo3conf/"
+#      execute "rsync -avL  #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/typo3conf/ext/ #{fetch(:deploy_to)}/current/dummy/typo3conf/ext/"
+#
+#      #TODO do git module magic
+#      #execute "cd #{fetch(:deploy_to)}/current && find `dummy/typo3conf/ext -name '.git'`"
+#    end
+#
+#    invoke 'typo3:hooks:after_suite'
+#  end
 
-    ### DOWNLOAD TYPO3.Homestead
-    unless File.exists? "Configuration/vagrant.yml"
-      sh "mkdir -p Configuration"
-      sh "cd Configuration && curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Configuration/vagrant.yml"
-    end
+  desc "Setup a new production environment. Don't sync content from old production"
+  task :setup_new_stage_no_sync do
 
-    sh "curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Vagrantfile"
-    sh "curl https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/README.md > README.Homestead.md"
+    invoke 'typo3:helper:rm_deploy_to' #OKE
+    invoke 'deploy' #OKE
+    invoke 'typo3:helper:setup_shared_typo3_dirs' #OKE
+    invoke 'typo3:helper:update_localconf' #OKE
+    invoke 'typo3:helper:current_relative_symlink' #OKE
+    invoke 'typo3:helper:restart_webserver' #OKE
 
-    ### Vagrant up
-    sh "vagrant up"
+    print "environment has been setup, you do need to sync content from old production"
+  end
 
-    on roles(:all) do
-      execute "sudo aptitude update"
-      execute "sudo aptitude install ruby-dev make -y"
-      execute "sudo gem install bundler"
+  desc "Setup a new staged typo3 environment when a it's already in model"
+  task :setup_new_stage_sync do
 
-      execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
-      execute "sudo echo 'THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site' > /var/www/index.php"
+    invoke 'typo3:helper:rm_deploy_to' #OKE
+    invoke 'deploy' #OKE
+    invoke 'typo3:helper:setup_shared_typo3_dirs' #OKE
+
+    invoke 'typo3:content:sync_files_from_production' #OKE
+    invoke 'typo3:content:sync_db_from_production' #OKE
+    invoke 'typo3:content:flush_cache_in_db' #OKE
+    invoke 'typo3:helper:update_localconf' #OKE
+    invoke 'typo3:helper:current_relative_symlink' #OKE
+    invoke 'typo3:helper:restart_webserver' #OKE
+
+    #invoke 'typo3:helper:upgrade_source' #REMOVE #SKIP
+    #invoke 'typo3:helper:run_filesearchandreplace' #PORT LATER #OR SKIP
+    #invoke 'typo3:helper:db_em_migrations' #PORT LATER #OR SKIP
+    #invoke 'typo3:helper:run_migrations' #PORT LATER #OR SKIP
+  end
+
+  desc "sync db & files and then deploy. Typically for Continuous Integration"
+  task :sync_n_deploy do
+    invoke 'deploy'
+    invoke 'typo3:content:sync_files_from_production'
+    invoke 'typo3:content:sync_db_from_production'
+    invoke 'typo3:content:flush_cache_in_db'
+    invoke 'typo3:helper:update_localconf'
+    invoke 'typo3:helper:current_relative_symlink'
+    invoke 'typo3:helper:restart_webserver'
+  end
+
+  desc "deploy the typo3 way"
+  task :deploy do
+    invoke 'deploy'
+    invoke 'typo3:helper:update_localconf'
+    invoke 'typo3:helper:current_relative_symlink'
+    invoke 'typo3:helper:restart_webserver'
+  end
+
+  desc "Make db & files in env. identical to production"
+  task :sync_from_production do
+    invoke 'typo3:content:sync_files_from_production'
+    invoke 'typo3:content:sync_db_from_production'
+    invoke 'typo3:content:flush_cache_in_db'
+  end
+
+#  desc "Clear all db and file content and config cache"
+#  task :clear_all_cache do
+#    invoke 'typo3:helper:flush_content_cache'
+#    on roles(:all) do
+#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:flush_cache"
+#    end
+#  end
+#
+#  #  desc "Run site presuite rspecs"
+#  task :rspec_pre_suite do
+#    on roles(:all) do
+#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:rspec_pre_suite"
+#    end
+#  end
+
+#  # desc "Run site post browser rspecs"
+#  task :rspec_post_browser do
+#    on roles(:all) do
+#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:rspec_post_browser"
+#    end
+#  end
+
+
+#  desc "Show environment information"
+#  task :info do
+#    invoke 'typo3:hooks:before_suite'
+#    on roles(:all) do
+#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:info"
+#    end
+#  end
+
+  namespace :hooks do
+    task :after_deploy do
+        invoke 'git:set_remote_url_no_cache'
+        invove 'typo3:helper:execute_post_deployment_commands'
     end
   end
 
-  desc "setup homestead"
-  task "setup_site" do
-
-    invoke 'deploy'
-    invoke 'typo3:helper:setup_shared_typo3_dirs' #PORTED_2_CAP
-    invoke 'homestead:fixknownhosts' #PORTED_2_CAP
-
-    if(fetch(:install_or_update_rake_typo3_run)==0)
-      p "installing old rake-lib"
-      on roles(:all) do
-        execute "git clone https://github.com/t3labcom/rake-typo3.git #{fetch(:deploy_to)}/.clone"
-        execute "cd #{fetch(:deploy_to)}/.clone && mv ./* ../"
-        execute "cd #{fetch(:deploy_to)} && rm -Rf .bundle"
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:bundle_executable)} install --binstubs"
-        print "rake-typo3 has been installed"
-        set :install_or_update_rake_typo3_run, 1
+  namespace :content do
+    desc 'sync files from production'
+    task :sync_files_from_production do
+      on roles(:allow_syncfiles) do
+        if fetch(:t3_live_sync)['filesync']
+          fetch(:t3_live_sync)['filesync'].each do |key,command|
+            execute "cd #{fetch(:deploy_to)} && #{command}"
+          end
+        end
       end
     end
 
-    invoke 'homestead:sync_database' #PORTED_2_CAP
+    desc 'sync database from production and run sql updates'
+    task :sync_db_from_production do
+      on roles(:allow_syncdatabase) do
 
-    invoke 'typo3:helper:create_typo3yaml' #DEPR
-    invoke 'typo3:helper:set_stage' #DEPR
+        ## TODO MOVE DT3MySQL
+        ## SYNC COMMAND
+        execute <<DBSYNC
+        ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
+          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+        #{fetch(:t3_live_sync)['dbsync']['dbname']} \
+          | mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)}
+DBSYNC
 
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:truncate_cache_tables"
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:truncate_session_tables"
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:flush_cache" #EASY
+        ## UPDATE COMMAND
+        if fetch(:t3_sql_updates)
+          fetch(:t3_sql_updates).each do |command|
+            execute DT3MySQL::mysql_execute(command)
+          end
+        end
+      end
+
+    end #ENDTASK
+
+    desc 'flush cache and session tables in database'
+    task :flush_cache_in_db do
+      on roles(:all) do
+
+        all_current_tables = capture(DT3MySQL::show_tables).split("\n")
+
+        cache_tables= %w(cache_extensions cache_hash cache_imagesizes cache_md5params cache_pages cache_pagesection cache_sys_dmail_stat cache_treelist cache_typo3temp_log cachingframework_cache_hash cachingframework_cache_hash_tags cachingframework_cache_pages cachingframework_cache_pages_tags cachingframework_cache_pagesection cachingframework_cache_pagesection_tags cf_cache_hash cf_cache_hash_tags cf_cache_pages cf_cache_pages_tags cf_cache_pagesection cf_cache_pagesection_tags cf_extbase_object cf_extbase_object_tags cf_extbase_reflection cf_extbase_reflection_tags cf_tt_news_cache cf_tt_news_cache_tags cf_tx_solr cf_tx_solr_tags tt_news_cache tt_news_cache_tags tx_realurl_chashcache tx_realurl_errorlog tx_realurl_pathcache tx_realurl_uniqalias tx_realurl_urldecodecache tx_realurl_urlencodecache tx_solr_cache tx_solr_cache_tags)
+
+        cache_tables.each do |table|
+          if all_current_tables.include?(table)
+            execute DT3MySQL::truncate_table(table)
+          end
+        end
+
+        session_tables=%w(be_sessions fe_session_data fe_sessions)
+        session_tables.each do |table|
+          if all_current_tables.include?(table)
+            execute DT3MySQL::truncate_table(table)
+          end
+        end
+      end
+
+    end
+  end
+
+  namespace :vagrant do
+
+    desc "setup new homestead vagrant machine for TYPO3 development"
+    task "setup_machine" do
+
+      sh "rm -Rf var-www"
+      sh "mkdir -p var-www"
+
+      ### DOWNLOAD TYPO3.Homestead
+      unless File.exists? "Configuration/vagrant.yml"
+        sh "mkdir -p Configuration"
+        sh "cd Configuration && curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Configuration/vagrant.yml"
+      end
+      sh "curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Vagrantfile"
+      sh "curl https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/README.md > README-Homestead.md"
+      sh "vagrant up"
+
+      on roles(:all) do
+        execute "sudo aptitude update"
+        execute "sudo aptitude install ruby-dev make -y"
+        execute "sudo gem install bundler"
+
+        execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+        execute "sudo echo 'THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site' > /var/www/index.php"
+      end
     end
 
-    #invoke 'typo3:helper:run_filesearchandreplace'
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_file_searchreplace_updates"
-    end
+    desc "setup homestead"
+    task "setup_site" do
 
-    #invoke 'typo3:helper:update_localconf'
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_db_credentials"
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_typo3conf_vars"
-#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_disable_extensions" #NOT WORKING AND DEPR
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_extconf_settings"
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:flush_config_cache" #EASY
-    end
+      invoke 'deploy'
+      invoke 'typo3:helper:setup_shared_typo3_dirs'
+      invoke 'typo3:vagrant:fixknownhosts'
+      invoke 'typo3:content:sync_db_from_production'
+      invoke 'typo3:content:flush_cache'
+      invoke 'typo3:helper:update_localconf'
+      invoke 'typo3:helper:current_relative_symlink' #PORTED_2_CAP
 
-    invoke 'typo3:helper:upgrade_source' #PORTED_2_CAP
+      on roles(:all) do
+        execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/local\\.typo3\\.org\\/current\\/dummy\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+      end
+      sh "ln -fs var-www/local.typo3.org/current local.typo3.org"
 
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:db_migrate"
-    end
+      invoke 'typo3:helper:restart_webserver'
 
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_migrations"
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_sql_updates"
-    end
 
-    invoke 'typo3:helper:current_relative_symlink' #PORTED_2_CAP
-    on roles(:all) do
-      execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/local\\.typo3\\.org\\/current\\/dummy\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
-    end
-
-    invoke 'typo3:helper:restart_webserver' #PORTED_2_CAP
-
-    sh "ln -fs var-www/local.typo3.org/current local.typo3.org"
-
-    print <<MSG
+      print <<MSG
 
     ----------------------------------------------------------------------
     The website seems to be succesfully installed in the Homestead Vagrant
@@ -123,280 +298,53 @@ namespace :homestead do
     ----------------------------------------------------------------------
 MSG
 
-  end
-
-  task "fixknownhosts" do
-    on roles(:all) do
-      execute "ssh -o PasswordAuthentication=no -o StrictHostKeyChecking=no #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} uptime"
     end
-  end
 
-  desc "Sync Database with live database and modify for homestead use."
-  task "sync_database" do
-    on roles(:all) do
-      begin
-        execute "sudo mysqladmin create #{fetch(:dbname)}"
-      rescue
-        print "DB Already exists\n"
+    task "fixknownhosts" do
+      on roles(:all) do
+        execute "ssh -o PasswordAuthentication=no -o StrictHostKeyChecking=no #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} uptime"
       end
-
-      execute <<DBSYNC
-        ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
-          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
-          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
-      #{fetch(:t3_live_sync)['dbsync']['dbname']} \
-          | mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)}
-DBSYNC
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_sql_updates"
     end
-  end
 
-  desc "sync_files"
-  task "sync_files" do
-    on roles(:all) do
+    desc "purge homestead and vagrant files, keep vagrant.yml"
+    task "purge_machine" do
+      sh "vagrant destroy"
+      sh "rm -f local.typo3.org"
+      sh "rm -Rf .vagrant Vagrantfile README.Homestead.md"
+    end
 
-      if fetch(:t3_live_sync)['filesync']
-        fetch(:t3_live_sync)['filesync'].each do |key,command|
-          execute "cd #{fetch(:deploy_to)} && #{command}"
+    desc "purge homestead site and database"
+    task "purge_site" do
+      on roles(:all) do
+        execute "rm -Rf #{fetch(:deploy_to)}"
+        begin
+          execute "sudo mysqladmin -f drop #{fetch(:dbname)}"
+        rescue
+          print "DB did not exist\n"
         end
+
+        execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+        execute "sudo echo 'THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site' > /var/www/index.php"
       end
 
-    end
-  end
+      invoke 'typo3:helper:restart_webserver' #PORTED_2_CAP
 
-  desc "purge homestead and vagrant files, keep vagrant.yml"
-  task "purge_machine" do
-    sh "vagrant destroy"
-    sh "rm -f local.typo3.org"
-    sh "rm -Rf .vagrant Vagrantfile README.Homestead.md"
-  end
-
-  desc "purge homestead site and database"
-  task "purge_site" do
-    on roles(:all) do
-      execute "rm -Rf #{fetch(:deploy_to)}"
-      begin
-        execute "sudo mysqladmin -f drop #{fetch(:dbname)}"
-      rescue
-        print "DB did not exist\n"
-      end
-
-      execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
-      execute "sudo echo 'THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site' > /var/www/index.php"
-    end
-
-    invoke 'typo3:helper:restart_webserver' #PORTED_2_CAP
-
-    sh "rm -f local.typo3.org"
-  end
-
-end
-
-namespace :typo3 do
-
-  # Empty repository must exist in git remote.
-  # This creates useable fresh skeleton for TYPO3
-  #
-  # From here:
-  # - a new TYPO3 enviroment can be created
-  # - an existing TYPO3 environment can be imported in this module
-  desc "init a initial EMPTY dev environment"
-  task :init1_empty_dummy do
-
-    invoke 'typo3:helper:rm_deploy_to'
-    invoke 'typo3:hooks:before_suite'
-
-    invoke 'deploy:check'
-    invoke 'deploy:updating'
-    invoke 'typo3:helper:setup_shared_typo3_dirs'
-    invoke 'typo3:helper:current_relative_symlink'
-
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)}/current/ && git remote set-url origin #{fetch(:repo_url)}"
-      execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p deploy/patches"
-      execute "cd #{fetch(:deploy_to)}/current/ && touch deploy/patches/.keep"
-      execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p deploy/migrations"
-      execute "cd #{fetch(:deploy_to)}/current/ && touch deploy/migrations/.keep"
-      execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p dummy/typo3conf/ext"
-      execute "cd #{fetch(:deploy_to)}/current/ && touch dummy/typo3conf/ext/index.html"
-    end
-
-    invoke 'typo3:helper:create_gitignore'
-    invoke 'typo3:helper:upgrade_source'
-    print "initial environment has been setup"
-  end
-
-  #  desc "init step 2: install a fresh TYPO3 in the designated version"
-  #task :init2_install_typo3 do
-  #  print "SORRY NOT YET IMPLEMENTED"
-  #end
-
-  desc "clone from extisting TYPO3 environment"
-  task :init_clone_from_flat_typo3 do
-
-    print "\nNOTE: When this task fails most times there is a problem with your ssh authorized public keys\n\n"
-
-    invoke 'typo3:hooks:before_suite'
-    invoke 'typo3:sync_from_production'
-
-    on roles(:all) do
-
-      execute "rsync -v #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/* #{fetch(:deploy_to)}/current/dummy/"
-      execute "rsync -v #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/.* #{fetch(:deploy_to)}/current/dummy/"
-      execute "rsync -av --exclude ext --exclude *.log --exclude temp*  #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/typo3conf/ #{fetch(:deploy_to)}/current/dummy/typo3conf/"
-      execute "rsync -avL  #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/typo3conf/ext/ #{fetch(:deploy_to)}/current/dummy/typo3conf/ext/"
-
-      #TODO do git module magic
-      #execute "cd #{fetch(:deploy_to)}/current && find `dummy/typo3conf/ext -name '.git'`"
-    end
-
-    invoke 'typo3:hooks:after_suite'
-  end
-
-  desc "Setup a new production environment. Don't sync content from old production"
-  task :init3_setup_new_stage_no_sync do
-    invoke 'typo3:helper:rm_deploy_to'
-    invoke 'typo3:hooks:before_suite'
-    invoke 'typo3:helper:setup_shared_typo3_dirs'
-    invoke 'deploy'
-    invoke('typo3:hooks:after_suite') #FIXME Only run it init3_setup_new_stage_no_sync is called
-    print "environment has been setup, you do need to sync content from old production"
-  end
-
-  desc "Setup a new staged typo3 environment when a it's already in model"
-  task :init3_setup_new_stage_sync do
-    invoke 'typo3:helper:rm_deploy_to'
-    invoke 'typo3:hooks:before_suite'
-    invoke 'typo3:helper:setup_shared_typo3_dirs'
-    invoke 'deploy'
-    invoke 'typo3:sync_from_production' # SAME BUT THIS ONE
-    invoke('typo3:hooks:after_suite')
-  end
-
-  desc 'merge with [remote_branch]'
-  task :merge_with, :remotebranch do |t, args|
-
-    invoke 'typo3:hooks:before_suite'
-    invoke 'deploy'
-
-    on roles(:all) do
-      branch = args[:remotebranch]
-      execute "cd #{fetch(:deploy_to)}/current && git remote set-url origin #{fetch(:repo_url)}"
-      execute "cd #{fetch(:deploy_to)}/current && git stash"
-      execute "cd #{fetch(:deploy_to)}/current && git fetch"
-      execute "cd #{fetch(:deploy_to)}/current && git checkout #{branch}"
-      execute "cd #{fetch(:deploy_to)}/current && git checkout master"
-      execute "cd #{fetch(:deploy_to)}/current && git merge --strategy-option ours #{branch}"
-    end
-
-    invoke('typo3:hooks:after_suite')
-  end
-
-  desc "deploy the typo3 way"
-  task :deploy do
-    invoke 'typo3:hooks:before_suite'
-    invoke 'deploy'
-    invoke('typo3:hooks:after_suite')
-  end
-
-  desc "sync db & files and then deploy. Typically for Continuous Integration"
-  task :sync_n_deploy do
-    invoke 'typo3:hooks:before_suite'
-    invoke 'typo3:sync_from_production'
-    invoke 'deploy'
-    invoke('typo3:hooks:after_suite')
-  end
-
-  desc "Clear all db and file content and config cache"
-  task :clear_all_cache do
-    invoke 'typo3:helper:flush_content_cache'
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:flush_cache"
-    end
-  end
-
-  #  desc "Run site presuite rspecs"
-  task :rspec_pre_suite do
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:rspec_pre_suite"
-    end
-  end
-
-  # desc "Run site post browser rspecs"
-  task :rspec_post_browser do
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:rspec_post_browser"
-    end
-  end
-
-  desc "Make db & files in env. identical to production"
-  task :sync_from_production do
-#    invoke 'typo3:hooks:before_suite'
-    invoke 'typo3:helper:sync_files_from_production'
-    invoke 'typo3:helper:sync_db_from_production'
-    invoke 'typo3:helper:flush_content_cache'
-  end
-
-  desc "Show environment information"
-  task :info do
-    invoke 'typo3:hooks:before_suite'
-    on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:info"
-    end
-  end
-
-  # Suite are large combined tasks like init3_setup_new_stage_sync
-  # Suite hooks are run only one time per session
-  namespace :hooks do
-
-    task :before_suite do
-      if(fetch(:hooks_before_suite_run)==0)
-
-        set :hooks_before_suite_run, 1
-        invoke 'typo3:helper:install_or_update_rake_typo3'
-        invoke 'typo3:helper:create_typo3yaml'
-        invoke 'typo3:helper:set_stage'
-      end
-    end
-
-    task :after_deploy do
-        invoke 'git:set_remote_url_no_cache'
-    end
-
-    task :after_suite do
-      invoke 'typo3:helper:run_filesearchandreplace'
-      invoke 'typo3:helper:update_localconf'
-      invoke 'typo3:helper:upgrade_source'
-      invoke 'typo3:helper:db_em_migrations'
-      invoke 'typo3:helper:run_migrations'
-      invoke 'typo3:helper:current_relative_symlink'
-      invoke 'typo3:helper:restart_webserver'
+      sh "rm -f local.typo3.org"
     end
   end
 
   namespace :helper do
-
-    task :sync_files_from_production do
-      on roles(:devtest,:syncfiles) do
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:sync_files_from_production"
-      end
-    end
-
-    task :sync_db_from_production do
-      on roles(:devtest,:syncdb) do
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:sync_db_from_production"
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_sql_updates"
-      end
-    end
-
-    # Truncate tables with content cache
-    task :flush_content_cache do
+    task :execute_post_deployment_commands do
       on roles(:all) do
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:truncate_cache_tables"
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:truncate_session_tables"
+
+        if fetch(:t3_post_deployment_commands)
+          fetch(:t3_post_deployment_commands).each do |command|
+            execute command
+          end
+        end
       end
-    end
+
+    end #ENDTASK
 
     # remove deploy_to directory
     task :rm_deploy_to do
@@ -410,51 +358,6 @@ namespace :typo3 do
     task :setup_shared_typo3_dirs do
       on roles(:all) do
         execute "cd #{fetch(:deploy_to)} && mkdir -p shared/fileadmin shared/typo3temp shared/uploads"
-      end
-    end
-
-    # set stage
-    task :set_stage do
-      on roles(:all) do
-        execute "echo '#{fetch(:stage).to_s}' > #{fetch(:deploy_to)}/STAGE"
-      end
-    end
-
-    # install rake-typo3 from github
-    task :install_or_update_rake_typo3 do
-
-      if(fetch(:install_or_update_rake_typo3_run)==0)
-
-        on roles(:all) do
-
-          gitexist = capture "if [ -e '#{fetch(:deploy_to)}/.git/config' ]; then echo -n 'true'; fi"
-
-          if(gitexist.chomp=='true')
-
-            #remove old deployTYPO3 version
-            remote = capture "cd #{fetch(:deploy_to)} && git remote -v"
-            if remote.include?('deploy')
-              print "removing old repository"
-              execute "cd  #{fetch(:deploy_to)} && rm -Rf .bundle config docs lib log spec .gitignore .rspec .travis.yml CHANGELOG.md Gemfile Gemfile.lock README.md Rakefile.rb VERSION .git"
-              execute "git clone https://github.com/t3labcom/rake-typo3.git #{fetch(:deploy_to)}/.clone"
-              execute "cd #{fetch(:deploy_to)}/.clone && mv ./* ../"
-              execute "cd #{fetch(:deploy_to)}/.clone && mv .bundle .git .gitignore .rspec .travis.yml ../"
-            end
-
-            execute "cd #{fetch(:deploy_to)} && git pull"
-            execute "cd #{fetch(:deploy_to)} && #{fetch(:bundle_executable)} install --binstubs"
-
-          else
-            execute "rm -Rf #{fetch(:deploy_to)}"
-            execute "git clone https://github.com/t3labcom/rake-typo3.git #{fetch(:deploy_to)}"
-            execute "cd #{fetch(:deploy_to)} && #{fetch(:bundle_executable)} install --binstubs"
-            print "rake-typo3 has been installed"
-          end
-
-          set :install_or_update_rake_typo3_run, 1
-
-        end
-
       end
     end
 
@@ -478,51 +381,6 @@ deprecation_*.log
       end
     end
 
-    task :create_typo3yaml do
-
-      on roles(:all) do
-
-        if(fetch(:t3_main_version))
-          t3yaml = {}
-          t3yaml['all'] = {}
-          t3yaml['all']['TYPO3_MAIN_VERSION'] = fetch(:t3_main_version)
-          t3yaml['all']['SYNCLIVE'] = {}
-          t3yaml['all']['SYNCLIVE']['SYNCCMDS'] = fetch(:t3_live_sync)['filesync']
-          t3yaml['all']['SYNCLIVE']['SSH_DB_SERVER'] = fetch(:t3_live_sync)['dbsync']['ssh_server']
-          t3yaml['all']['SYNCLIVE']['SSH_DB_USER'] = fetch(:t3_live_sync)['dbsync']['ssh_user']
-          t3yaml['all']['SYNCLIVE']['DB'] = fetch(:t3_live_sync)['dbsync']
-          t3yaml['all']['MYSQLEXECDIR'] = fetch(:rake_mysql_exec_dir)
-          t3yaml['all']['PHP_EXECUTABLE'] = fetch(:rake_php_executable)
-
-          stage = fetch(:stage).to_s
-
-          t3yaml[stage] = {}
-          t3yaml[stage]['DB'] = {}
-          t3yaml[stage]['DB']['dbname'] = fetch(:dbname)
-          t3yaml[stage]['DB']['dbuser'] = fetch(:dbuser)
-          t3yaml[stage]['DB']['dbpass'] = fetch(:dbpass)
-          t3yaml[stage]['DB']['dbhost'] = fetch(:dbhost)
-
-          t3yaml[stage]['SQL_UPDATES'] = fetch(:t3_sql_updates)
-          t3yaml[stage]['TYPO3_CONF_VARS'] = fetch(:t3_conf_vars)
-          t3yaml[stage]['TYPO3_CONF_VARS_EXT_EXTCONF'] = fetch(:t3_conf_vars_ext_extconf)
-          t3yaml[stage]['TYPO3_SOURCE_PATCHES'] = fetch(:t3_source_patches)
-
-          if !fetch(:t3_alternative_source_url).nil?
-            t3yaml[stage]['TYPO3_ALTERNATIVE_SOURCE_URL'] = fetch(:t3_alternative_source_url)
-          end
-
-
-          t3yaml[stage]['DISABLE_EXTENSIONS'] = fetch(:t3_disable_extensions)
-          t3yaml[stage]['FILE_SEARCH_REPLACE'] = fetch(:t3_file_search_replace)
-
-          contents = StringIO.new(t3yaml.to_yaml)
-          upload! contents, "#{fetch(:deploy_to)}/typo3.yml"
-        end
-
-      end
-    end
-
     # when not in deploy latest ls releases/ -1 | sort -r | head -n 1
     task :current_relative_symlink do
       on roles(:all) do
@@ -533,81 +391,53 @@ deprecation_*.log
 
     task :update_localconf do
       on roles(:all) do
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_db_credentials"
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_typo3conf_vars"
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_disable_extensions"
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_extconf_settings"
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:flush_config_cache" #EASY
+
+        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_db_credentials"
+        cmd1 =Typo3Helper::make_set_localconf_database_settings_command(fetch(:dbname),fetch(:dbuser),fetch(:dbpass),fetch(:dbhost))
+        execute "cd #{fetch(:deploy_to)} && #{cmd1}"
+
+        cmd2 = "mv #{fetch(:typo3_v6_local_conf_path)}.tmp #{fetch(:typo3_v6_local_conf_path)}"
+        execute "cd #{fetch(:deploy_to)} && #{cmd2}"
+
+        #PORT LATER OR SKIP
+        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_typo3conf_vars"
+
+        #PORT LATER OR SKIP
+        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_disable_extensions"
+
+        #PORT LATER OR SKIP
+        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_extconf_settings"
+
+        #PORT LATER OR SKIP, SEEMS NOT NEEDED ANYMORE
+        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:flush_config_cache" #EASY
+        #system("rm -Rf current/dummy/typo3conf/temp_CACHED_*")
       end
     end
 
-    # Migrate database (typo3 Extension Manager migrations)
-    task :db_em_migrations do
-      on roles(:all) do
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:db_migrate"
-      end
-    end
-
-    # Run search and replace
-    task :run_filesearchandreplace do
-      on roles(:all) do
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_file_searchreplace_updates"
-      end
-    end
+#    # Migrate database (typo3 Extension Manager migrations)
+#    task :db_em_migrations do
+#      on roles(:all) do
+#        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:db_migrate"
+#      end
+#    end
+#
+#    # Run search and replace
+#    task :run_filesearchandreplace do
+#      on roles(:all) do
+#        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_file_searchreplace_updates"
+#      end
+#    end
 
     # Specific environment migration sql's. E.g. rename all fe-users etc..
     # migrations should be placed in current/deploy/migrations/
     # Run migrations (sql migrations)
-    task :run_migrations do
-
-      on roles(:all) do
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_migrations"
-        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_sql_updates"
-      end
-    end
-
-
-
-
-    desc "Upgrade TYPO3 source in environment to latest minor version"
-    task :upgrade_source do
-      unless fetch(:t3_dont_upgrade_source) ==1
-        version = Typo3Helper.typo3_last_version fetch(:t3_main_version)
-        download_link = "https://get.typo3.org/#{version}"
-
-        on roles(:all) do
-          execute "cd #{fetch(:deploy_to)} && mkdir -p typo3source"
-          execute "cd #{fetch(:deploy_to)}/typo3source && (tar tzvf typo3_src-#{version}.tar.gz > /dev/null && [ $? -eq 0 ] || curl -L -o typo3_src-#{version}.tar.gz #{download_link})"
-          execute "cd #{fetch(:deploy_to)}/current/dummy && rm -Rf typo3_src index.php typo3"
-          execute("cd #{fetch(:deploy_to)}/current/dummy && tar xzf #{fetch(:deploy_to)}/typo3source/typo3_src-#{version}.tar.gz")
-
-          #LINK SOURCE STUFF
-          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -s typo3_src-#{version} typo3_src")
-          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -s typo3_src/index.php index.php")
-          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -s typo3_src/typo3 typo3")
-
-          #LINK SHARED
-          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -sf ../../../shared/fileadmin fileadmin")
-          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -sf ../../../shared/typo3temp typo3temp")
-          execute("cd #{fetch(:deploy_to)}/current/dummy && ln -sf ../../../shared/uploads uploads")
-
-          #TODO REPLACE RAKE-TYPO3
-          execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} sub:apply_patches"
-
-          begin
-            if execute("cd #{fetch(:deploy_to)}/current/dummy && head typo3_src/index.php")
-              print "\nsource has been upgraded"
-              print "\n\nWARNING: YOU MUST RUN THE UPGRADE SCRIPTS IN BACKEND\n\n"
-            end
-          rescue
-            raise "WARNING, TYPO3_SRC IS NOT ACCESSIBLE! FIX IT"
-          end
-        end
-      else
-        p "dont do anything"
-
-      end
-    end
+#    task :run_migrations do
+#
+#      on roles(:all) do
+#        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_migrations"
+#        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_sql_updates"
+#      end
+#    end
 
     task :restart_webserver do
       on roles(:all) do
