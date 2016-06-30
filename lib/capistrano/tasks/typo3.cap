@@ -203,16 +203,23 @@ namespace :typo3 do
         #{fetch(:t3_live_sync)['dbsync']['dbname']} \
           | mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)}
 DBSYNC
+      end
 
-        ## UPDATE COMMAND
+      invoke 'typo3:content:sql_updates'
+
+    end #ENDTASK
+
+    desc 'run necessary sql queries for environment'
+    task :sql_updates do
+      on roles(:allow_syncdatabase) do
         if fetch(:t3_sql_updates)
           fetch(:t3_sql_updates).each do |command|
             execute DT3MySQL::mysql_execute(command)
           end
         end
       end
+    end
 
-    end #ENDTASK
 
     desc 'flush cache and session tables in database'
     task :flush_cache_in_db do
@@ -389,6 +396,7 @@ deprecation_*.log
       end
     end
 
+    desc "update LocalConf with correct db credentionals"
     task :update_localconf do
       on roles(:all) do
 
