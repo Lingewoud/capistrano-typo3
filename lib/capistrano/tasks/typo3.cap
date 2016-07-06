@@ -248,8 +248,17 @@ DBSYNC
 
   namespace :vagrant do
 
+    ## TODO
+    # - first boot without bind fs
+    # - move /var/www
+    # - mkdir new /var/www
+    # - install bindfs
+    # - boot again with bind fs conf
+    # - setup vagrant file if not installed
     desc "setup new homestead vagrant machine for TYPO3 development"
     task "setup_machine" do
+
+      sh "vagrant plugin install vagrant-bindfs"
 
       sh "rm -Rf var-www"
       sh "mkdir -p var-www"
@@ -259,7 +268,11 @@ DBSYNC
         sh "mkdir -p Configuration"
         sh "cd Configuration && curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Configuration/vagrant.yml"
       end
-      sh "curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Vagrantfile"
+
+      unless File.exists? "Vagrantfile"
+        sh "curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Vagrantfile"
+      end
+
       sh "curl https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/README.md > README-Homestead.md"
       sh "vagrant up"
 
@@ -279,8 +292,13 @@ DBSYNC
       invoke 'deploy'
       invoke 'typo3:helper:setup_shared_typo3_dirs'
       invoke 'typo3:vagrant:fixknownhosts'
+
+      on roles(:all) do
+        execute "sudo mysqladmin create #{fetch(:dbname)}"
+      end
+
       invoke 'typo3:content:sync_db_from_production'
-      invoke 'typo3:content:flush_cache'
+      invoke 'typo3:content:flush_cache_in_db'
       invoke 'typo3:helper:update_localconf'
       invoke 'typo3:helper:current_relative_symlink' #PORTED_2_CAP
 
@@ -313,11 +331,11 @@ MSG
       end
     end
 
-    desc "purge homestead and vagrant files, keep vagrant.yml"
+    desc "purge .vagrant files"
     task "purge_machine" do
       sh "vagrant destroy"
       sh "rm -f local.typo3.org"
-      sh "rm -Rf .vagrant Vagrantfile README.Homestead.md"
+      sh "rm -Rf .vagrant"
     end
 
     desc "purge homestead site and database"
