@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## capistrano-typo3 0.3.1
+- split mysql sync commands into sep. commands to prevent site locking
+- add trusted hosts to homestead
+
 ## capistrano-typo3 0.2.4 2015-03-09
 - add clear all cache task
 

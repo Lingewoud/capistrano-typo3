@@ -193,16 +193,32 @@ namespace :typo3 do
     task :sync_db_from_production do
       on roles(:allow_syncdatabase) do
 
-        ## TODO MOVE DT3MySQL
-        ## SYNC COMMAND
-        execute <<DBSYNC
-        ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+        # DUMP DATABASE TO IMAGE
+        execute <<DBSYNC1
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
           -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
           -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
-        #{fetch(:t3_live_sync)['dbsync']['dbname']} \
-          | mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)}
-DBSYNC
+          #{fetch(:t3_live_sync)['dbsync']['dbname']} > /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC1
+
+        # TRANSFER IMAGE
+        execute <<DBSYNC2
+          scp #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']}:/tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']} \
+          /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+DBSYNC2
+
+        # IMPORT AND REMOVE IMAGE
+        execute <<DBSYNC3
+          mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)} < /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']} && \
+          rm /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+DBSYNC3
+
+        # REMOVE IMAGE
+        execute <<DBSYNC4
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'ls /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC4
       end
 
       invoke 'typo3:content:sql_updates'
@@ -219,7 +235,6 @@ DBSYNC
         end
       end
     end
-
 
     desc 'flush cache and session tables in database'
     task :flush_cache_in_db do
@@ -303,12 +318,17 @@ DBSYNC
       invoke 'typo3:helper:current_relative_symlink' #PORTED_2_CAP
 
       on roles(:all) do
+        if fetch(:hs_default_upstream_php_engine)
+          execute "sudo sed -i 's/set $upstream .*/set $upstream #{fetch(:hs_default_upstream_php_engine)};/g' /etc/nginx/sites-available/local.typo3.org.conf"
+        end
+
         execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/local\\.typo3\\.org\\/current\\/dummy\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
       end
+
+
       sh "ln -fs var-www/local.typo3.org/current local.typo3.org"
 
       invoke 'typo3:helper:restart_webserver'
-
 
       print <<MSG
 
@@ -396,11 +416,10 @@ MSG
 *.swp
 *.swo
 ENABLE_INSTALL_TOOL
-VERSION
+/VERSION
 temp_CACHE*.php
 deprecation_*.log
 "
-
         contents = StringIO.new(ignorestring)
         upload! contents, "#{fetch(:deploy_to)}/current/.gitignore"
       end
@@ -416,15 +435,30 @@ deprecation_*.log
 
     desc "update LocalConf with correct db credentionals"
     task :update_localconf do
+
       on roles(:all) do
 
-        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_db_credentials"
-        cmd1 =Typo3Helper::make_set_localconf_database_settings_command(fetch(:dbname),fetch(:dbuser),fetch(:dbpass),fetch(:dbhost))
-        execute "cd #{fetch(:deploy_to)} && #{cmd1}"
+        execute "echo '<?php' > /var/www/local.typo3.org/current/dummy/typo3conf/AdditionalConfiguration.php"
 
-        cmd2 = "mv #{fetch(:typo3_v6_local_conf_path)}.tmp #{fetch(:typo3_v6_local_conf_path)}"
-        execute "cd #{fetch(:deploy_to)} && #{cmd2}"
+        if fetch(:t3_add_unsafe_trusted_host_pattern)
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"SYS\"][\"trustedHostsPattern\"] = \".*\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+        end
 
+        if fetch(:t3_store_db_credentials_in_addionalconf)
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"database\"] = \"#{fetch(:dbname)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"host\"] = \"#{fetch(:dbhost)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"password\"] = \"#{fetch(:dbpass)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"] = \"#{fetch(:dbuser)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+        else
+          cmd1 =Typo3Helper::make_set_localconf_database_settings_command(fetch(:dbname),fetch(:dbuser),fetch(:dbpass),fetch(:dbhost))
+          execute "cd #{fetch(:deploy_to)} && #{cmd1}"
+
+          cmd2 = "mv #{fetch(:typo3_v6_local_conf_path)}.tmp #{fetch(:typo3_v6_local_conf_path)}"
+          execute "cd #{fetch(:deploy_to)} && #{cmd2}"
+        end
+      end
+
+      on roles(:all) do
         #PORT LATER OR SKIP
         #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_typo3conf_vars"
 
