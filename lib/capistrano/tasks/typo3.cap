@@ -438,7 +438,7 @@ deprecation_*.log
 
       on roles(:all) do
 
-        execute "echo '<?php' > /var/www/local.typo3.org/current/dummy/typo3conf/AdditionalConfiguration.php"
+        execute "echo '<?php' > #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
 
         if fetch(:t3_add_unsafe_trusted_host_pattern)
           execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"SYS\"][\"trustedHostsPattern\"] = \".*\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"

@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## capistrano-typo3 0.3.2
+- hotfix wrong additional path
+
 ## capistrano-typo3 0.3.1
 - split mysql sync commands into sep. commands to prevent site locking
 - add trusted hosts to homestead
