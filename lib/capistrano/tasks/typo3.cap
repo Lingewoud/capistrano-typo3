@@ -202,23 +202,34 @@ namespace :typo3 do
           #{fetch(:t3_live_sync)['dbsync']['dbname']} > /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
 DBSYNC1
 
-        # TRANSFER IMAGE
+        # COMPRESS IMAGE
         execute <<DBSYNC2
-          scp #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']}:/tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']} \
-          /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'gzip -f /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
 DBSYNC2
 
-        # IMPORT AND REMOVE IMAGE
+        # TRANSFER IMAGE
         execute <<DBSYNC3
-          mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)} < /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']} && \
-          rm /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+          scp #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']}:/tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz \
+          /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
 DBSYNC3
 
-        # REMOVE IMAGE
+        # DECOMPRESS IMAGE
         execute <<DBSYNC4
-          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          'ls /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+          gunzip /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
 DBSYNC4
+
+        # IMPORT AND REMOVE IMAGE
+        execute <<DBSYNC5
+          mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)} < /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']} && \
+          rm /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+DBSYNC5
+
+        # REMOVE IMAGE
+        execute <<DBSYNC6
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'rm /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'.gz
+DBSYNC6
       end
 
       invoke 'typo3:content:sql_updates'
@@ -263,20 +274,13 @@ DBSYNC4
 
   namespace :vagrant do
 
-    ## TODO
-    # - first boot without bind fs
-    # - move /var/www
-    # - mkdir new /var/www
-    # - install bindfs
-    # - boot again with bind fs conf
-    # - setup vagrant file if not installed
     desc "setup new homestead vagrant machine for TYPO3 development"
     task "setup_machine" do
-
-      sh "vagrant plugin install vagrant-bindfs"
-
-      sh "rm -Rf var-www"
-      sh "mkdir -p var-www"
+      if `vagrant plugin list | grep vagrant-bind`.include? 'vagrant-bindfs'
+        print "vagrant bindfs plugin is already installed\n"
+      else
+        sh "vagrant plugin install vagrant-bindfs"
+      end
 
       ### DOWNLOAD TYPO3.Homestead
       unless File.exists? "Configuration/vagrant.yml"
@@ -295,38 +299,36 @@ DBSYNC4
         execute "sudo aptitude update"
         execute "sudo aptitude install ruby-dev make -y"
         execute "sudo gem install bundler"
-
-        execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
-        execute "sudo echo 'THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site' > /var/www/index.php"
       end
+
+      invoke 'typo3:vagrant:set_no_site'
+      invoke 'typo3:helper:restart_webserver'
     end
 
     desc "setup homestead"
     task "setup_site" do
 
-      invoke 'deploy'
-      invoke 'typo3:helper:setup_shared_typo3_dirs'
-      invoke 'typo3:vagrant:fixknownhosts'
+      on roles(:all) do
+        execute "sudo mkdir -p /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo chown -Rf vagrant.vagrant /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo ln -s /var/www/local.typo3.org /var/current"
+      end
 
       on roles(:all) do
         execute "sudo mysqladmin create #{fetch(:dbname)}"
       end
 
+      invoke 'typo3:vagrant:fixknownhosts'
       invoke 'typo3:content:sync_db_from_production'
       invoke 'typo3:content:flush_cache_in_db'
       invoke 'typo3:helper:update_localconf'
-      invoke 'typo3:helper:current_relative_symlink' #PORTED_2_CAP
 
       on roles(:all) do
         if fetch(:hs_default_upstream_php_engine)
           execute "sudo sed -i 's/set $upstream .*/set $upstream #{fetch(:hs_default_upstream_php_engine)};/g' /etc/nginx/sites-available/local.typo3.org.conf"
         end
-
-        execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/local\\.typo3\\.org\\/current\\/dummy\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+        execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/local\\.typo3\\.org\\/dummy\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
       end
-
-
-      sh "ln -fs var-www/local.typo3.org/current local.typo3.org"
 
       invoke 'typo3:helper:restart_webserver'
 
@@ -342,7 +344,6 @@ DBSYNC4
     directory
     ----------------------------------------------------------------------
 MSG
-
     end
 
     task "fixknownhosts" do
@@ -361,21 +362,27 @@ MSG
     desc "purge homestead site and database"
     task "purge_site" do
       on roles(:all) do
-        execute "rm -Rf #{fetch(:deploy_to)}"
+        execute "sudo rm -Rf /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo rm -f /var/current"
+
         begin
           execute "sudo mysqladmin -f drop #{fetch(:dbname)}"
         rescue
           print "DB did not exist\n"
         end
-
-        execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
-        execute "sudo echo 'THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site' > /var/www/index.php"
       end
 
-      invoke 'typo3:helper:restart_webserver' #PORTED_2_CAP
-
-      sh "rm -f local.typo3.org"
+      invoke 'typo3:vagrant:set_no_site'
+      invoke 'typo3:helper:restart_webserver'
     end
+
+    task "set_no_site" do
+      on roles(:all) do
+        execute "sudo sed -i 's/root .*/root \"\\/var\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+        execute "sudo su -c 'echo \"THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site\" > /var/index.php'"
+      end
+    end
+
   end
 
   namespace :helper do
