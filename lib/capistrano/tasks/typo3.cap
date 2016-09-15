@@ -21,65 +21,6 @@ set :install_or_update_rake_typo3_run, 0
 
 namespace :typo3 do
 
-  # Empty repository must exist in git remote.
-  # This creates useable fresh skeleton for TYPO3
-  #
-  # From here:
-  # - a new TYPO3 enviroment can be created
-  # - an existing TYPO3 environment can be imported in this module
-#  desc "init a initial EMPTY dev environment"
-#  task :init1_empty_dummy do
-#
-#    invoke 'typo3:helper:rm_deploy_to'
-#    invoke 'typo3:hooks:before_suite'
-#
-#    invoke 'deploy:check'
-#    invoke 'deploy:updating'
-#    invoke 'typo3:helper:setup_shared_typo3_dirs'
-#    invoke 'typo3:helper:current_relative_symlink'
-#
-#    on roles(:all) do
-#      execute "cd #{fetch(:deploy_to)}/current/ && git remote set-url origin #{fetch(:repo_url)}"
-#      execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p deploy/patches"
-#      execute "cd #{fetch(:deploy_to)}/current/ && touch deploy/patches/.keep"
-#      execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p deploy/migrations"
-#      execute "cd #{fetch(:deploy_to)}/current/ && touch deploy/migrations/.keep"
-#      execute "cd #{fetch(:deploy_to)}/current/ && mkdir -p dummy/typo3conf/ext"
-#      execute "cd #{fetch(:deploy_to)}/current/ && touch dummy/typo3conf/ext/index.html"
-#    end
-#
-#    invoke 'typo3:helper:create_gitignore'
-#    invoke 'typo3:helper:upgrade_source'
-#    print "initial environment has been setup"
-#  end
-
-#  #  desc "init step 2: install a fresh TYPO3 in the designated version"
-#  #task :init2_install_typo3 do
-#  #  print "SORRY NOT YET IMPLEMENTED"
-#  #end
-#
-#  desc "clone from extisting TYPO3 environment"
-#  task :init_clone_from_flat_typo3 do
-#
-#    print "\nNOTE: When this task fails most times there is a problem with your ssh authorized public keys\n\n"
-#
-#    invoke 'typo3:hooks:before_suite'
-#    invoke 'typo3:sync_from_production'
-#
-#    on roles(:all) do
-#
-#      execute "rsync -v #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/* #{fetch(:deploy_to)}/current/dummy/"
-#      execute "rsync -v #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/.* #{fetch(:deploy_to)}/current/dummy/"
-#      execute "rsync -av --exclude ext --exclude *.log --exclude temp*  #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/typo3conf/ #{fetch(:deploy_to)}/current/dummy/typo3conf/"
-#      execute "rsync -avL  #{fetch(:t3_clone_original)[:ssh_user]}@#{fetch(:t3_clone_original)[:ssh_host]}:#{fetch(:t3_clone_original)[:dummy_root]}/typo3conf/ext/ #{fetch(:deploy_to)}/current/dummy/typo3conf/ext/"
-#
-#      #TODO do git module magic
-#      #execute "cd #{fetch(:deploy_to)}/current && find `dummy/typo3conf/ext -name '.git'`"
-#    end
-#
-#    invoke 'typo3:hooks:after_suite'
-#  end
-
   desc "Setup a new production environment. Don't sync content from old production"
   task :setup_new_stage_no_sync do
 
@@ -106,11 +47,6 @@ namespace :typo3 do
     invoke 'typo3:helper:update_localconf' #OKE
     invoke 'typo3:helper:current_relative_symlink' #OKE
     invoke 'typo3:helper:restart_webserver' #OKE
-
-    #invoke 'typo3:helper:upgrade_source' #REMOVE #SKIP
-    #invoke 'typo3:helper:run_filesearchandreplace' #PORT LATER #OR SKIP
-    #invoke 'typo3:helper:db_em_migrations' #PORT LATER #OR SKIP
-    #invoke 'typo3:helper:run_migrations' #PORT LATER #OR SKIP
   end
 
   desc "sync db & files and then deploy. Typically for Continuous Integration"
@@ -138,37 +74,6 @@ namespace :typo3 do
     invoke 'typo3:content:sync_db_from_production'
     invoke 'typo3:content:flush_cache_in_db'
   end
-
-#  desc "Clear all db and file content and config cache"
-#  task :clear_all_cache do
-#    invoke 'typo3:helper:flush_content_cache'
-#    on roles(:all) do
-#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:flush_cache"
-#    end
-#  end
-#
-#  #  desc "Run site presuite rspecs"
-#  task :rspec_pre_suite do
-#    on roles(:all) do
-#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:rspec_pre_suite"
-#    end
-#  end
-
-#  # desc "Run site post browser rspecs"
-#  task :rspec_post_browser do
-#    on roles(:all) do
-#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:rspec_post_browser"
-#    end
-#  end
-
-
-#  desc "Show environment information"
-#  task :info do
-#    invoke 'typo3:hooks:before_suite'
-#    on roles(:all) do
-#      execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} env:info"
-#    end
-#  end
 
   namespace :hooks do
     task :after_deploy do
@@ -233,8 +138,7 @@ DBSYNC6
       end
 
       invoke 'typo3:content:sql_updates'
-
-    end #ENDTASK
+    end
 
     desc 'run necessary sql queries for environment'
     task :sql_updates do
@@ -392,7 +296,6 @@ MSG
         execute "sudo su -c 'echo \"THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site\" > /var/index.php'"
       end
     end
-
   end
 
   namespace :helper do
@@ -415,7 +318,6 @@ MSG
       end
     end
 
-    # TODO move to typo3-rake?
     # create typo3 dirs in shared
     task :setup_shared_typo3_dirs do
       on roles(:all) do
@@ -475,46 +377,7 @@ deprecation_*.log
         end
       end
 
-      on roles(:all) do
-        #PORT LATER OR SKIP
-        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_typo3conf_vars"
-
-        #PORT LATER OR SKIP
-        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_disable_extensions"
-
-        #PORT LATER OR SKIP
-        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:update_localconf_extconf_settings"
-
-        #PORT LATER OR SKIP, SEEMS NOT NEEDED ANYMORE
-        #execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:flush_config_cache" #EASY
-        #system("rm -Rf current/dummy/typo3conf/temp_CACHED_*")
-      end
     end
-
-#    # Migrate database (typo3 Extension Manager migrations)
-#    task :db_em_migrations do
-#      on roles(:all) do
-#        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:db_migrate"
-#      end
-#    end
-#
-#    # Run search and replace
-#    task :run_filesearchandreplace do
-#      on roles(:all) do
-#        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_file_searchreplace_updates"
-#      end
-#    end
-
-    # Specific environment migration sql's. E.g. rename all fe-users etc..
-    # migrations should be placed in current/deploy/migrations/
-    # Run migrations (sql migrations)
-#    task :run_migrations do
-#
-#      on roles(:all) do
-#        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_migrations"
-#        execute "cd #{fetch(:deploy_to)} && #{fetch(:rake_executable)} cap:run_sql_updates"
-#      end
-#    end
 
     task :restart_webserver do
       on roles(:all) do
