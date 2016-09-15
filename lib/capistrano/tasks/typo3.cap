@@ -276,6 +276,8 @@ DBSYNC6
 
     desc "setup new homestead vagrant machine for TYPO3 development"
     task "setup_machine" do
+      invoke 'typo3:vagrant:check_branch'
+
       if `vagrant plugin list | grep vagrant-bind`.include? 'vagrant-bindfs'
         print "vagrant bindfs plugin is already installed\n"
       else
@@ -307,6 +309,7 @@ DBSYNC6
 
     desc "setup homestead"
     task "setup_site" do
+      invoke 'typo3:vagrant:check_branch'
 
       on roles(:all) do
         execute "sudo mkdir -p /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
@@ -346,12 +349,6 @@ DBSYNC6
 MSG
     end
 
-    task "fixknownhosts" do
-      on roles(:all) do
-        execute "ssh -o PasswordAuthentication=no -o StrictHostKeyChecking=no #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} uptime"
-      end
-    end
-
     desc "purge .vagrant files"
     task "purge_machine" do
       sh "vagrant destroy"
@@ -374,6 +371,19 @@ MSG
 
       invoke 'typo3:vagrant:set_no_site'
       invoke 'typo3:helper:restart_webserver'
+    end
+
+    task "check_branch" do
+      current_branch = `git branch | grep \\* | cut -d ' ' -f2`.strip
+      if current_branch != fetch(:branch)
+        raise "current branch differs from homestead.rb configuration.\n see config/deploy/homestead.rb\n\n Current branch:   #{current_branch}\n Homestead branch: #{fetch(:branch)} "
+      end
+    end
+
+    task "fixknownhosts" do
+      on roles(:all) do
+        execute "ssh -o PasswordAuthentication=no -o StrictHostKeyChecking=no #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} uptime"
+      end
     end
 
     task "set_no_site" do
