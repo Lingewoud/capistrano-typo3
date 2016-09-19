@@ -9,7 +9,6 @@ class DT3MySQL
   end
 
   def self.flush_tables
-    DT3Logger::log('Flushing tables')
     tablelist =	 `#{self.create_mysql_base_command} -e "show tables" | grep -v Tables_in | grep -v "+"`
     dropsql = ''
     tablelist.split("\n").each {|table|
@@ -29,7 +28,6 @@ class DT3MySQL
 
   def self.create_mysql_base_command_with(user,host,password,db,exec='mysql')
     cmd = "#{self.mysql_executable_dir}/#{exec} -u#{user} -h#{host} -p#{password} #{db}"
-    DT3Logger::log('mysql command:',cmd,'debug')
     return cmd
   end
 
@@ -166,19 +164,16 @@ class DT3MySQL
 
     if(not excludelist.nil?)
       excludestring = self.create_exclude_string(excludelist,db)
-      DT3Logger::log('Dumping with excludelist',excludestring,'debug')
     else
       excludestring = ''
     end
 
     cmd="#{create_mysql_base_command('mysqldump')} #{excludestring} > #{outputfile}"
-    DT3Logger::log('Executing SQL',cmd,'debug')
     system(cmd)
   end
 
   def self.mysql_import(user,pass,host,db,insqlfile)
     cmd ="#{create_mysql_base_command} < #{insqlfile}"
-    DT3Logger::log('Executing import',cmd,'debug')
     system(cmd)
   end
 end

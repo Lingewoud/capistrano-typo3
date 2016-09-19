@@ -89,7 +89,6 @@ class Typo3Helper
     end
 
     if version.split('.').count == 3
-      #DT3Logger::log("Pinned to minor version","#{version}")
       typo3_version = version
     else
       versions = self.get_typo3_versions
@@ -109,7 +108,6 @@ class Typo3Helper
 
     unless File.exist?(tarball)
       if(CONFIG['TYPO3_ALTERNATIVE_SOURCE_URL'])
-        DT3Logger::log("Downloading source tarball from","#{CONFIG['TYPO3_ALTERNATIVE_SOURCE_URL']}")
         altsrc = CONFIG['TYPO3_ALTERNATIVE_SOURCE_URL']
         srcurl = altsrc[7..(altsrc.index('/',8)-1)]
         srcpath = altsrc[(altsrc.index('/',8))..-1]
@@ -120,12 +118,10 @@ class Typo3Helper
         srcurl = "get.typo3.org"
         srcpath = "/#{version}"
 
-        DT3Logger::log("Downloading source tarball from","https://get.typo3.org/#{version}")
         DT3Div::downloadTo(srcurl,srcpath,tarball)
       end
     end
 
-    DT3Logger::log("Unpacking source tarballs")
     if File.directory?(File.join('typo3source', "typo3_src-#{version}"))
       FileUtils.rm_r(File.join('typo3source',"typo3_src-#{version}"))
     end
@@ -145,14 +141,11 @@ class Typo3Helper
   end
 
   def self.flush_config_cache()
-    DT3Logger::log('flush_cache','removing cache files','debug')
     system("rm -Rf current/dummy/typo3conf/temp_CACHED_*")
   end
 
   def self.flush_cache()
-    DT3Logger::log('flush_cache','removing cache files','debug')
     system("rm -Rf current/dummy/typo3temp/*")
-    DT3Logger::log('flush_cache','truncating typo3temp','debug')
     system("rm -Rf current/dummy/typo3conf/temp_CACHED_*")
   end
 
@@ -384,7 +377,6 @@ class Typo3Helper
   end
 
   def self.symlink_source version
-    DT3Logger::log("Linking typo3_src-#{version} with typo3_src in dummy")
     system("rm -f #{File.join('current','dummy','typo3_src')}")
     system("ln -sf ../../../typo3source/typo3_src-#{version} #{File.join('current','dummy','typo3_src')}")
     #system("cd current/dummy && ln -sf ../../../typo3source/typo3_src-#{version} typo3_src")
