@@ -127,13 +127,13 @@ DBSYNC4
         # IMPORT AND REMOVE IMAGE
         execute <<DBSYNC5
           mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)} < /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']} && \
-          rm /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+          rm -f /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}
 DBSYNC5
 
         # REMOVE IMAGE
         execute <<DBSYNC6
           ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          'rm /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'.gz
+          'rm -f /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz'
 DBSYNC6
       end
 
