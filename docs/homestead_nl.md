@@ -12,7 +12,67 @@ TYPO3.Homestead bevat alle mogelijke hulpmiddelen voor TYPO3
 en PHP ontwikkelaars, waaronder diverse php-versies en php-debugging
 tools, maar ook o.a. MailHog, memcached, rabbitMQ, redis, elasticsearch.
 Capistrano-typo3 installeert homestead en houdt de configuratie helemaal
-vanilla. Lees alles over de mogelijkheden van Homestead op de homepage.
+vanilla. Lees alles over de mogelijkheden Homestead op de
+[TYPO3.Homestead gitlab site](https://github.com/Tuurlijk/TYPO3.Homestead).
+
+
+## Installatie
+
+Als een site al geschikt is gemaakt voor Homestead moet je volgende
+handelingen uitvoeren in Homestead op je eigen machine met de website te
+installeren.
+
+### 1. Clone de website en installeer de noodzakelijk gems
+
+```
+git clone -b developer git@gitlab.lingewoud.net:sites/site-t3.git
+bundle install --path=vendor --binstubs
+```
+
+### 2. Draai het homestead setup script
+
+```
+./bin/cap homestead typo3:vagrant:setup_machine
+```
+
+Als er iets niet goed gaat kun je met het volgende commando de machine
+verwijderen.
+
+```
+./bin/cap homestead typo3:vagrant:purge_machine
+```
+
+Je kunt vervolgens weer met een schone lei het commando
+
+```
+homestead:setup_machine
+```
+uitvoeren.
+
+### 3. Installeer de site in homestead
+
+```
+./bin/cap homestead typo3:vagrant:setup_site
+```
+
+Als er iets niet goed gaat gebruik je het commando:
+
+```
+./bin/cap homestead typo3:vagrant:purge_site
+```
+
+Je kunt vervolgens weer met een schone lei het commando
+```homestead:setup_site``` uitvoeren.
+
+### 4. Sychroniseer de live content bestanden
+
+Houdt er rekening mee dat dit lang kan duren. Voer het onderstaande
+commando uit om de bestanden vanuit de live installatie naar de vagrant
+machine de synchroniseren:
+
+```
+./bin/cap homestead typo3:content:sync_files_from_production
+```
 
 ## Gebruiken
 
@@ -34,16 +94,7 @@ een vagrant machine tegelijk draaien.
 Als vagrant draait kun je website openen via: http://local.typo3.org.
 
 Als de website draait staat de TYPO3 code in de map
-```[T3-project]/var-www/local.typo3.org/current/dummy```. Er is ook een
-snelkoppeling naar deze map: ```[T3-project]/local.typo3.org/dummy```
-
-Let op de map ```[T3-project]/dummy``` bevat dezelfde code maar de
-vagrant machine gebruikt een kopie. Wijzingen zijn alleen te zien in de
-browser als je ze maakt in
-```[T3-project]/var-www/local.typo3.org/current/dummy```. Denk hier ook
-aan als je code commit in git repository. Zorg dat de huidige directory
-verwijst naar ```[T3-project]/var-www/local.typo3.org/current/dummy```
-als je code wilt committen.
+```[T3-project]/dummy```.
 
 ### Site database
 
@@ -74,70 +125,9 @@ bestanden in z'n Homestead ontwikkelomgeving wil bijwerken met de
 live versies. Dit kan met de volgende 2 losse commando's:
 
 ```
-cap homestead homestead:sync_database
-cap homestead homestead:sync_files
+./bin/cap homestead typo3:content:sync_db_from_production
+./bin/cap homestead typo3:content:sync_files_from_production
 ```
-
-## INSTALLATIE
-
-Als een site al geschikt is gemaakt voor Homestead moet je volgende
-handelingen uitvoeren in Homestead op je eigen machine met de website te
-installeren.
-
-### 1. Clone de website en installeer de noodzakelijk gems
-
-```
-git clone -b developer git@gitlab.lingewoud.net:typo3-sites/ccv-t3.git
-bundle install --path=vendor --binstubs
-```
-
-### 2. Draai het homestead setup script
-
-```
-./bin/cap homestead homestead:setup_machine
-```
-
-Als er iets niet goed gaat kun je met het volgende commando de machine
-verwijderen.
-
-```
-./bin/cap homestead homestead:purge_machine
-```
-
-Je kunt vervolgens weer met een schone lei het commando
-```homestead:setup_machine``` uitvoeren.
-
-### 3. Installeer de site in homestead
-
-```
-./bin/cap homestead homestead:setup_site
-```
-
-Als er iets niet goed gaat gebruik je het commando:
-
-```
-./bin/cap homestead homestead:purge_site
-```
-
-Je kunt vervolgens weer met een schone lei het commando
-```homestead:setup_site``` uitvoeren.
-
-### 4. Sychroniseer de live content bestanden
-
-Houdt er rekening mee dat dit lang kan duren. Voer het onderstaande
-commando uit om de bestanden vanuit de live installatie naar de vagrant
-machine de synchroniseren:
-
-```
-./bin/cap homestead homestead:sync_files
-```
-
-## Configurarie
-
-Dit hoofdstuk moet nog geschreven worden...
-
-
-
 
 ## Links
 - [TYPO3.Homestead](https://github.com/Tuurlijk/TYPO3.Homestead)
