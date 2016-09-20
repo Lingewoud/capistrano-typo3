@@ -15,7 +15,6 @@ Capistrano-typo3 installeert homestead en houdt de configuratie helemaal
 vanilla. Lees alles over de mogelijkheden Homestead op de
 [TYPO3.Homestead gitlab site](https://github.com/Tuurlijk/TYPO3.Homestead).
 
-
 ## Installatie
 
 Als een site al geschikt is gemaakt voor Homestead moet je volgende
@@ -62,7 +61,7 @@ Als er iets niet goed gaat gebruik je het commando:
 ```
 
 Je kunt vervolgens weer met een schone lei het commando
-```homestead:setup_site``` uitvoeren.
+```./bin/cap homestead typo3:vagrant:setup_site``` uitvoeren.
 
 ### 4. Sychroniseer de live content bestanden
 

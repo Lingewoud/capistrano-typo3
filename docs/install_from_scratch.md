@@ -1,4 +1,7 @@
-# Nieuwe site Point
+# Nieuwe site
+
+Dit is een verslag van een from scratch installatie, dat moet leiden tot
+een complete handleiding.
 
 verslag TYPO3 omgeving maken voor development en release
 

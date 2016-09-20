@@ -1,12 +1,8 @@
-### WARNING CURRENT MASTER IS NOT COMPLIANT WITH BOILERPLATE AND MANUAL###
+# Capistrano::Typo3 [![Code Climate](https://codeclimate.com/github/t3labcom/capistrano-typo3/badges/gpa.svg)](https://codeclimate.com/github/t3labcom/capistrano-typo3) [![Issue Count](https://codeclimate.com/github/t3labcom/capistrano-typo3/badges/issue_count.svg)](https://codeclimate.com/github/t3labcom/capistrano-typo3)
 
-updates will follow soon.
+**Note: this plugin works only with Capistrano 3.** Please check the
+capistrano gem version you're using before installing this gem:
 
-
-# Capistrano::Typo3 [![Code Climate](https://codeclimate.com/github/mipmip/capistrano-typo3/badges/gpa.svg)](https://codeclimate.com/github/mipmip/capistrano-typo3)
-
-**Note: this plugin works only with Capistrano 3.** Please check the capistrano
-gem version you're using before installing this gem:
 `$ bundle show | grep capistrano`
 
 Capistrano deployment tasks for TYPO3 CMS
@@ -36,25 +32,12 @@ And then execute:
 
     $ bundle
 
-Or install it yourself as:
-
-    $ gem install capistrano-typo3
-
 ## Usage
-
-### Quickstart
-
-
-To get started with capistrano-typo3 we advise you to start with
-the
-[capistrano-typo3-boilerplate](https://github.com/t3labcom/capistrano-typo3-boilerplate).
-You can find a quickstart tutorial here
-[capistrano-typo3-boilerplate](https://github.com/t3labcom/capistrano-typo3-boilerplate).
 
 ### TYPO3.Homestead
 
 Capistrano-typo3 integrates TYPO3.Homestead. Here's the [Dutch documentation](docs/homestead_nl.md)
-about this integrations. English version will hopefully follow soon.
+about this integrations. English version will follow soon.
 
 ## References / inspiration
 * https://github.com/programmerqeu/capistrano-typo3-cms
