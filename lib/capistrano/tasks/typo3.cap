@@ -241,7 +241,6 @@ DBSYNC6
       invoke 'typo3:content:sync_db_from_production'
       invoke 'typo3:content:flush_cache_in_db'
       invoke 'typo3:helper:update_localconf'
-      invoke 'typo3:content:sync_files_from_production'
 
       on roles(:all) do
         if fetch(:hs_default_upstream_php_engine)
@@ -251,6 +250,7 @@ DBSYNC6
       end
 
       invoke 'typo3:helper:restart_webserver'
+      invoke 'typo3:content:sync_files_from_production'
 
       print <<MSG
 
