@@ -60,8 +60,12 @@ Als er iets niet goed gaat gebruik je het commando:
 ./bin/cap homestead typo3:vagrant:purge_site
 ```
 
-Je kunt vervolgens weer met een schone lei het commando
-```./bin/cap homestead typo3:vagrant:setup_site``` uitvoeren.
+Je kunt vervolgens weer met een schone lei het volgende commando
+uitvoeren.
+
+```
+./bin/cap homestead typo3:vagrant:setup_site
+```
 
 ### 4. Sychroniseer de live content bestanden
 
