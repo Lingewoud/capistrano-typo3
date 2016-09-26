@@ -9,11 +9,14 @@ set :bundle_executable, "/usr/bin/bundle"
 set :rake_executable, "./bin/rake"
 set :rake_mysql_exec_dir, "/usr/bin"
 set :rake_php_executable, "/usr/bin/php"
+
 set :t3_dont_upgrade_source, 0
 set :t3_alternative_source_url, nil
 set :t3_main_version, '7.6'
-set :typo3_v6_local_conf_path, File.join('current','dummy','typo3conf','LocalConfiguration.php')
 set :t3_post_deployment_commands, []
+
+set :typo3_v6_local_conf_path, File.join('current','dummy','typo3conf','LocalConfiguration.php')
+set :http_protocol, 'http'
 
 #----- INTERNAL VARIABLES, DON'T CHANGE OR OVERRIDE THESE
 set :hooks_before_suite_run, 0
@@ -172,15 +175,29 @@ DBSYNC6
           end
         end
       end
-
     end
   end
 
   namespace :vagrant do
+    desc "when homestead is not yet configured"
+    task "init_homestead_conf" do
+      invoke 'typo3:vagrant:check_branch'
+      sh "mkdir -p config"
+      sh "cd config && curl -O https://raw.githubusercontent.com/t3labcom/capistrano-typo3/master/homestead_files/vagrant.yml"
+      sh "cd config/deploy && curl -O https://raw.githubusercontent.com/t3labcom/capistrano-typo3/master/homestead_files/homestead.rb"
+      sh "curl -O https://raw.githubusercontent.com/t3labcom/capistrano-typo3/master/homestead_files/Vagrantfile"
+    end
 
     desc "setup new homestead vagrant machine for TYPO3 development"
     task "setup_machine" do
       invoke 'typo3:vagrant:check_branch'
+
+      if `vagrant status | grep running`.strip != ""
+        sh "vagrant destroy"
+      end
+
+      sh "rm -f local.typo3.org"
+      sh "rm -Rf .vagrant"
 
       if `vagrant plugin list | grep vagrant-bind`.include? 'vagrant-bindfs'
         print "vagrant bindfs plugin is already installed\n"
@@ -188,17 +205,6 @@ DBSYNC6
         sh "vagrant plugin install vagrant-bindfs"
       end
 
-      ### DOWNLOAD TYPO3.Homestead
-      unless File.exists? "Configuration/vagrant.yml"
-        sh "mkdir -p Configuration"
-        sh "cd Configuration && curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Configuration/vagrant.yml"
-      end
-
-      unless File.exists? "Vagrantfile"
-        sh "curl -O https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/Vagrantfile"
-      end
-
-      sh "curl https://raw.githubusercontent.com/Tuurlijk/TYPO3.Homestead/master/README.md > README-Homestead.md"
       sh "vagrant up"
 
       on roles(:all) do
@@ -216,6 +222,12 @@ DBSYNC6
       invoke 'typo3:vagrant:check_branch'
 
       on roles(:all) do
+        ## PURGE IF NEEDED
+        execute "sudo rm -Rf /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo rm -f /var/current"
+        execute "sudo mysql -e 'DROP DATABASE IF EXISTS #{fetch(:dbname)}'"
+
+        ## CREATE
         execute "sudo mkdir -p /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
         execute "sudo chown -Rf vagrant.vagrant /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
         execute "sudo ln -s /var/www/local.typo3.org /var/current"
@@ -229,6 +241,7 @@ DBSYNC6
       invoke 'typo3:content:sync_db_from_production'
       invoke 'typo3:content:flush_cache_in_db'
       invoke 'typo3:helper:update_localconf'
+      invoke 'typo3:content:sync_files_from_production'
 
       on roles(:all) do
         if fetch(:hs_default_upstream_php_engine)
@@ -255,26 +268,12 @@ MSG
 
     desc "purge .vagrant files"
     task "purge_machine" do
-      sh "vagrant destroy"
-      sh "rm -f local.typo3.org"
-      sh "rm -Rf .vagrant"
+      print "OBSOLETE: you can run 'setup_machine' over and over again\n"
     end
 
-    desc "purge homestead site and database"
+    #desc "purge homestead site and database"
     task "purge_site" do
-      on roles(:all) do
-        execute "sudo rm -Rf /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
-        execute "sudo rm -f /var/current"
-
-        begin
-          execute "sudo mysqladmin -f drop #{fetch(:dbname)}"
-        rescue
-          print "DB did not exist\n"
-        end
-      end
-
-      invoke 'typo3:vagrant:set_no_site'
-      invoke 'typo3:helper:restart_webserver'
+      print "OBSOLETE: you can run 'setup_site' over and over again\n"
     end
 
     task "check_branch" do
@@ -294,6 +293,25 @@ MSG
       on roles(:all) do
         execute "sudo sed -i 's/root .*/root \"\\/var\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
         execute "sudo su -c 'echo \"THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site\" > /var/index.php'"
+      end
+    end
+  end
+
+  namespace :test do
+
+    desc "ssh_password_less_login_rsync"
+    task :ssh_password_less_login_rsync do
+      on roles(:all) do |server|
+        begin
+          capture("ssh -o PasswordAuthentication=no -o StrictHostKeyChecking=no #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} uptime")
+        rescue
+           er =   "password less login to #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} is not possible\n"
+           er += "You need to fix this first.\n"
+           er += "solution 1: ssh-add.\n"
+           er += "solution 2: install public key on the remote server.\n"
+
+           raise "#{er}"
+        end
       end
     end
   end
