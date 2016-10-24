@@ -51,5 +51,12 @@ namespace :git do
     end
   end
 
+  desc "remove remote git cache repository"
+  task :remove_git_cache_repo do
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)} && rm -Rf repo"
+    end
+  end
+
 
 end
