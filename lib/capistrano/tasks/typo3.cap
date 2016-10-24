@@ -14,6 +14,8 @@ set :t3_dont_upgrade_source, 0
 set :t3_alternative_source_url, nil
 set :t3_main_version, '7.6'
 set :t3_post_deployment_commands, []
+set :t3_db_sync_ignore_tables, []
+
 
 set :typo3_v6_local_conf_path, File.join('current','dummy','typo3conf','LocalConfiguration.php')
 set :http_protocol, 'http'
@@ -101,14 +103,38 @@ namespace :typo3 do
     task :sync_db_from_production do
       on roles(:allow_syncdatabase) do
 
+        ignorestring = ""
+
+        if(:t3_db_sync_ignore_tables)
+
+          fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
+            ignorestring = "#{ignorestring} --ignore-table=#{fetch(:t3_live_sync)['dbsync']['dbname']}.#{ignore_tbl}"
+          end
+        end
+
         # DUMP DATABASE TO IMAGE
         execute <<DBSYNC1
           ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
           'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
           -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
           -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+          #{ignorestring} \
           #{fetch(:t3_live_sync)['dbsync']['dbname']} > /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
 DBSYNC1
+
+        if(:t3_db_sync_ignore_tables)
+          fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
+
+            execute <<DBSYNC1
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
+          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+          --no-data \
+            #{fetch(:t3_live_sync)['dbsync']['dbname']} #{ignore_tbl} >> /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC1
+          end
+        end
 
         # COMPRESS IMAGE
         execute <<DBSYNC2
