@@ -28,7 +28,6 @@ namespace :typo3 do
 
   desc "Setup a new production environment. Don't sync content from old production"
   task :setup_new_stage_no_sync do
-
     invoke 'typo3:helper:rm_deploy_to' #OKE
     invoke 'deploy' #OKE
     invoke 'typo3:helper:setup_shared_typo3_dirs' #OKE
@@ -150,7 +149,7 @@ DBSYNC3
 
         # DECOMPRESS IMAGE
         execute <<DBSYNC4
-          gunzip /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
+          gunzip -f /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
 DBSYNC4
 
         # IMPORT AND REMOVE IMAGE
