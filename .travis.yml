@@ -28,12 +28,12 @@ script:
   - curl -vsf 'http://localhost:8080/hello.php' &> /dev/stdout
   - cat /tmp/error.log
   - mkdir typo3test
-  - cd typo3test 
+  - cd typo3test
   - git init
   - echo "vendor" >> .gitignore
   - curl -sSL https://raw.githubusercontent.com/Lingewoud/capistrano-typo3/master/install.sh | sh
   - git add .
   - git commit -m "install" -a
   - git status
-  - ls config
+  - ls
   - echo "jo"
