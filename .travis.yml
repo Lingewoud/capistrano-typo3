@@ -1,0 +1,26 @@
+language: php
+sudo: false
+php:
+    - 7.0
+services:
+  - mysql
+
+matrix:
+  fast_finish: true
+
+cache:
+  - apt
+
+addons:
+  apt:
+    packages:
+      - nginx
+      - realpath
+
+install:
+  - travis/install-nginx.sh
+  - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
+
+script:
+  - curl -vsf 'http://localhost:8080/hello.php' &> /dev/stdout
+  - cat /tmp/error.log
