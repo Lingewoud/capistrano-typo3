@@ -1,9 +1,7 @@
-language: ruby
-sudo: false
+language: php
+sudo: true
 php:
     - 7.0
-rvm:
-  - 2.4.1
 
 services:
   - mysql
