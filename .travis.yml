@@ -27,7 +27,10 @@ script:
   - mkdir typo3test
   - cd typo3test 
   - git init
+  - echo "vendor" >> .gitignore
   - curl -sSL https://raw.githubusercontent.com/Lingewoud/capistrano-typo3/master/install.sh | sh
   - git add .
-  - git commit -m "install"
+  - git commit -m "install" -a
   - git status
+  - ls config
+  - echo "jo"
