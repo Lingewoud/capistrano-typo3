@@ -21,6 +21,9 @@ addons:
       - realpath
 
 install:
+  #  - dpkg -l | grep php
+  #- dpkg -l | grep nginx
+  - dpkg -l
   - travis/install-nginx.sh
   - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
 
