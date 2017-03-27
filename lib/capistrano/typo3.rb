@@ -1,3 +1,5 @@
+require 'securerandom'
+
 require "capistrano/typo3/version"
 require "capistrano/typo3/typo3_helper"
 require "capistrano/typo3/dt3_div"

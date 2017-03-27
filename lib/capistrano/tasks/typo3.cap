@@ -15,7 +15,7 @@ set :t3_alternative_source_url, nil
 set :t3_main_version, '7.6'
 set :t3_post_deployment_commands, []
 set :t3_db_sync_ignore_tables, []
-
+set :t3_ts_constants, []
 
 set :typo3_v6_local_conf_path, File.join('current','dummy','typo3conf','LocalConfiguration.php')
 set :http_protocol, 'http'
@@ -32,6 +32,7 @@ namespace :typo3 do
     invoke 'deploy' #OKE
     invoke 'typo3:helper:setup_shared_typo3_dirs' #OKE
     invoke 'typo3:helper:update_localconf' #OKE
+    invoke 'typo3:helper:write_tsconstants' #OKE
     invoke 'typo3:helper:current_relative_symlink' #OKE
     invoke 'typo3:helper:restart_webserver' #OKE
 
@@ -49,6 +50,7 @@ namespace :typo3 do
     invoke 'typo3:content:sync_db_from_production' #OKE
     invoke 'typo3:content:flush_cache_in_db' #OKE
     invoke 'typo3:helper:update_localconf' #OKE
+    invoke 'typo3:helper:write_tsconstants' #OKE
     invoke 'typo3:helper:current_relative_symlink' #OKE
     invoke 'typo3:helper:restart_webserver' #OKE
   end
@@ -60,6 +62,7 @@ namespace :typo3 do
     invoke 'typo3:content:sync_db_from_production'
     invoke 'typo3:content:flush_cache_in_db'
     invoke 'typo3:helper:update_localconf'
+    invoke 'typo3:helper:write_tsconstants' #OKE
     invoke 'typo3:helper:current_relative_symlink'
     invoke 'typo3:helper:restart_webserver'
   end
@@ -68,6 +71,7 @@ namespace :typo3 do
   task :deploy do
     invoke 'deploy'
     invoke 'typo3:helper:update_localconf'
+    invoke 'typo3:helper:write_tsconstants' #OKE
     invoke 'typo3:helper:current_relative_symlink'
     invoke 'typo3:helper:restart_webserver'
   end
@@ -266,6 +270,7 @@ DBSYNC6
       invoke 'typo3:content:sync_db_from_production'
       invoke 'typo3:content:flush_cache_in_db'
       invoke 'typo3:helper:update_localconf'
+      invoke 'typo3:helper:write_tsconstants' #OKE
 
       on roles(:all) do
         if fetch(:hs_default_upstream_php_engine)
@@ -342,6 +347,7 @@ MSG
   end
 
   namespace :helper do
+    desc "execute_post_deployment_commands"
     task :execute_post_deployment_commands do
       on roles(:all) do
 
@@ -419,7 +425,19 @@ deprecation_*.log
           execute "cd #{fetch(:deploy_to)} && #{cmd2}"
         end
       end
+    end
 
+    desc "write typo3conf/tsConstants.ts"
+    task :write_tsconstants do
+      on roles(:all) do
+        execute "rm -f #{fetch(:deploy_to)}/current/dummy/typo3conf/tsConstants/*.ts  || true"
+        execute "mkdir -p #{fetch(:deploy_to)}/current/dummy/typo3conf/tsConstants"
+        constantFile = "tsConstants_#{SecureRandom.hex}.ts"
+        execute "echo '# Constants written by capistrano-typo3 at: #{Time.now.strftime("%d/%m/%Y %H:%M")}' > #{fetch(:deploy_to)}/current/dummy/typo3conf/tsConstants/#{constantFile}"
+        fetch(:t3_ts_constants).each do | ts_const |
+          execute "echo '#{ts_const}' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/tsConstants/#{constantFile}"
+        end
+      end
     end
 
     task :restart_webserver do
