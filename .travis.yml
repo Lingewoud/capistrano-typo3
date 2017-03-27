@@ -17,22 +17,6 @@ addons:
     packages:
       - nginx
       - realpath
-        #      - apache2
-        #      - libapache2-mod-fastcgi
-        #      - php-memcached
-        #      - php-memcache
-        #      - php-apcu php7.0
-        #      - php7.0-mcrypt
-        #      - php7.0-mysql
-        #      - php7.0-xml
-        #      - php7.0-fpm
-        #      - php7.0-xml
-        #      - php7.0-soap
-        #      - php7.0-zip
-        #      - php7.0-mbstring
-        #      - php7.0-gd
-        #      - php7.0-opcache
-        #      - graphicsmagick
 
 install:
   - \curl -L https://get.rvm.io | bash -s stable
@@ -41,6 +25,8 @@ install:
   - /bin/bash -l -c "gem install bundler --no-ri --no-rdoc"
   - travis/install-nginx.sh
   - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
+  - git config --global user.email "you@example.com"
+  - git config --global user.name "Your Name"
 
 script:
   - curl -vsf 'http://localhost:8080/hello.php' &> /dev/stdout
@@ -54,4 +40,4 @@ script:
   - git commit -m "install" -a
   - git status
   - ls
-  - echo "jo"
+  - ./bin/cap -T
