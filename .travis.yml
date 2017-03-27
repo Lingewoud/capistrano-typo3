@@ -1,5 +1,5 @@
 language: ruby
-#sudo: false
+sudo: false
 php:
     - 7.0
 rvm:
@@ -19,13 +19,26 @@ addons:
     packages:
       - nginx
       - realpath
+      - apache2 
+      - libapache2-mod-fastcgi
+      - php-memcached 
+      - php-memcache 
+      - php-apcu php7.0
+      - php7.0-mcrypt
+      - php7.0-mysql
+      - php7.0-xml 
+      - php7.0-fpm
+      - php7.0-xml
+      - php7.0-soap
+      - php7.0-zip
+      - php7.0-mbstring
+      - php7.0-gd
+      - php7.0-opcache
+      - graphicsmagick
 
 install:
   #  - dpkg -l | grep php
   #- dpkg -l | grep nginx
-  - apt-get install -y apache2 libapache2-mod-fastcgi php-memcached php-memcache php-apcu php7.0
-  - apt-get install -y php7.0-mcrypt php7.0-mysql php7.0-xml php7.0-fpm php7.0-xml php7.0-soap
-  - apt-get install -y php7.0-zip php7.0-mbstring php7.0-gd php7.0-opcache graphicsmagick
   - dpkg -l
   - travis/install-nginx.sh
   - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
