@@ -30,14 +30,30 @@ install:
 
 script:
   - curl -vsf 'http://localhost:8080/hello.php' &> /dev/stdout
-  - cat /tmp/error.log
-  - mkdir typo3test
-  - cd typo3test
+    #  - cat /tmp/error.log
+  - mkdir typo3repo
+  - cd typo3repo
   - git init
   - echo "vendor" >> .gitignore
   - curl -sSL https://raw.githubusercontent.com/Lingewoud/capistrano-typo3/master/install.sh | sh
+    #  - cp travis/composer.tpl.json composer.json
+  - mkdir dummy
+  - cd dummy
+  - curl -L -o typo3_src.tar.gz get.typo3.org/7
+  - tar xzvf typo3_src.tar.gz
+  - mv `find . -name "typo3_src-*"` typo3_src
+  - cd typo3_src
+  - composer install --no-dev
+  - cd ..
+  - ln -s typo3_src/index.php
+  - ln -s typo3_src/typo3
+  - cp typo3_src/_.htaccess .htaccess
   - git add .
-  - git commit -m "install" -a
-  - git status
-  - ls
-  - ./bin/cap -T
+  - git commit -m "fresh install typo3" -a
+    #- https://typo3.org/extensions/repository/download/typo3_console/4.3.0/zip/
+#- git status
+    #  - ./bin/cap typo3:helper:rm_deploy_to
+    #  - ./bin/cap deploy
+    #  - ./bin/cap typo3:helper:setup_shared_typo3_dirs
+    #  - ./bin/cap typo3:helper:current_relative_symlink
+

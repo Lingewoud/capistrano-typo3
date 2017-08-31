@@ -17,8 +17,6 @@ verslag TYPO3 omgeving maken voor development en release
 - Dummy dir met typo3 vanilla
 - TYPO3 installatie
 
-
-
 ### Stap 1 gitrepogemaakt en gecloned om in te werken
 
 ### Stap 2 prelive omgeving
@@ -53,7 +51,7 @@ bundle install --binstubs
 ```
 
 ```
-cap install STAGES=homestead,test,prelive,live
+cap install STAGES=homestead,staging,live
 ```
 
 Voeg toe aan Capfile

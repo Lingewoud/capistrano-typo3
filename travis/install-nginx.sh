@@ -26,6 +26,8 @@ mkdir "$DIR/nginx"
 mkdir "$DIR/nginx/sites-enabled"
 mkdir "$DIR/var"
 
+echo $DIR
+
 # Configure the PHP handler.
 if [ "$PHP_VERSION" = 'hhvm' ] || [ "$PHP_VERSION" = 'hhvm-nightly' ]
 then
@@ -56,3 +58,10 @@ tpl "$DIR/default-site.tpl.conf" "$DIR/nginx/sites-enabled/default-site.conf"
 
 # Start nginx.
 nginx -c "$DIR/nginx/nginx.conf"
+
+# Configure Capistrano
+tpl "$DIR/cap-live.tpl.rb" "$DIR/config/deploy/live.rb"
+tpl "$DIR/cap-deploy.tpl.rb" "$DIR/config/deploy.rb"
+
+# Configure typo3/composer
+tpl "$DIR/composer.tpl.json" "$DIR/composer.json"
