@@ -125,7 +125,7 @@ namespace :typo3 do
           -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
           -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
           #{ignorestring} \
-          #{fetch(:t3_live_sync)['dbsync']['dbname']} > /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+          #{fetch(:t3_live_sync)['dbsync']['dbname']} > /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
 DBSYNC1
 
         if(:t3_db_sync_ignore_tables)
@@ -137,7 +137,7 @@ DBSYNC1
           -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
           -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
           --no-data \
-            #{fetch(:t3_live_sync)['dbsync']['dbname']} #{ignore_tbl} >> /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+            #{fetch(:t3_live_sync)['dbsync']['dbname']} #{ignore_tbl} >> /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
 DBSYNC1
           end
         end
@@ -145,30 +145,30 @@ DBSYNC1
         # COMPRESS IMAGE
         execute <<DBSYNC2
           ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          'gzip -f /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+          'gzip -f /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
 DBSYNC2
 
         # TRANSFER IMAGE
         execute <<DBSYNC3
-          scp #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']}:/tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz \
-          /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
+          scp #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']}:/tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz \
+          /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
 DBSYNC3
 
         # DECOMPRESS IMAGE
         execute <<DBSYNC4
-          gunzip -f /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
+          gunzip -f /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
 DBSYNC4
 
         # IMPORT AND REMOVE IMAGE
         execute <<DBSYNC5
-          mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)} < /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']} && \
-          rm -f /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+          mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)} < /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']} && \
+          rm -f /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}
 DBSYNC5
 
         # REMOVE IMAGE
         execute <<DBSYNC6
           ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          'rm -f /tmp/.captypo3dump-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz'
+          'rm -f /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz'
 DBSYNC6
       end
 
