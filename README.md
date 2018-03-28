@@ -49,6 +49,8 @@ about this integrations. English version will follow soon.
 * http://stackoverflow.com/questions/9860593/deploying-multiple-applications-into-a-single-tree-with-capistrano-and-git
 * http://stackoverflow.com/questions/11905360/how-best-to-manage-typo3-installations-using-git
 
+![image](http://picdrop.t3lab.com/1ut2sCxI6E.png)
+
 ## Contributing
 
 1. Fork it ( https://github.com/[my-github-username]/capistrano-typo3/fork )
