@@ -105,6 +105,74 @@ namespace :typo3 do
       end
     end
 
+    desc 'sync database from production to a local mysql'
+    task :sync_db_from_production_local_no_pass do
+
+        ignorestring = ""
+
+        if(:t3_db_sync_ignore_tables)
+
+          fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
+            ignorestring = "#{ignorestring} --ignore-table=#{fetch(:t3_live_sync)['dbsync']['dbname']}.#{ignore_tbl}"
+          end
+        end
+
+        # DUMP DATABASE TO IMAGE
+        system <<DBSYNC1
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
+          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+          #{ignorestring} \
+          #{fetch(:t3_live_sync)['dbsync']['dbname']} > /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC1
+
+        if(:t3_db_sync_ignore_tables)
+          fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
+
+            system <<DBSYNC1
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
+          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+          --no-data \
+            #{fetch(:t3_live_sync)['dbsync']['dbname']} #{ignore_tbl} >> /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC1
+          end
+        end
+
+        # COMPRESS IMAGE
+        system <<DBSYNC2
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'gzip -f /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC2
+
+        # TRANSFER IMAGE
+        system <<DBSYNC3
+          scp #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']}:/tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz \
+          /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
+DBSYNC3
+
+        # DECOMPRESS IMAGE
+        system <<DBSYNC4
+          gunzip -f /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
+DBSYNC4
+
+        # IMPORT AND REMOVE IMAGE
+        system <<DBSYNC5
+          mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} #{fetch(:dbname)} < /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']} && \
+          rm -f /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+DBSYNC5
+
+        # REMOVE IMAGE
+        system <<DBSYNC6
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'rm -f /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz'
+DBSYNC6
+
+    end
+
+
     desc 'sync database from production and run sql updates'
     task :sync_db_from_production do
       on roles(:allow_syncdatabase) do
@@ -446,6 +514,30 @@ deprecation_*.log
         execute "cd #{fetch(:deploy_to)} && ln -s releases/`ls -1 releases/ | sort -r | head -n 1` current"
       end
     end
+
+    desc "update LocalConf with correct db credentionals without SSH"
+    task :update_localconf_local do
+
+      system "echo '<?php' > dummy/typo3conf/AdditionalConfiguration.php"
+
+      if fetch(:t3_add_unsafe_trusted_host_pattern)
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"SYS\"][\"trustedHostsPattern\"] = \".*\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+      end
+
+      if fetch(:t3_store_db_credentials_in_addionalconf)
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"database\"] = \"#{fetch(:dbname)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"host\"] = \"#{fetch(:dbhost)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"password\"] = \"#{fetch(:dbpass)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"] = \"#{fetch(:dbuser)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+      else
+        cmd1 =Typo3Helper::make_set_localconf_database_settings_command(fetch(:dbname),fetch(:dbuser),fetch(:dbpass),fetch(:dbhost))
+        system "cd #{fetch(:deploy_to)} && #{cmd1}"
+
+        cmd2 = "mv #{fetch(:typo3_v6_local_conf_path)}.tmp #{fetch(:typo3_v6_local_conf_path)}"
+        system "cd #{fetch(:deploy_to)} && #{cmd2}"
+      end
+    end
+
 
     desc "update LocalConf with correct db credentionals"
     task :update_localconf do
