@@ -12,7 +12,7 @@ set :rake_php_executable, "/usr/bin/php"
 
 set :t3_dont_upgrade_source, 0
 set :t3_alternative_source_url, nil
-set :t3_main_version, '7.6'
+set :t3_main_version, '7'
 set :t3_post_deployment_commands, []
 set :t3_db_sync_ignore_tables, []
 set :t3_ts_constants, []
@@ -555,6 +555,15 @@ deprecation_*.log
           execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"host\"] = \"#{fetch(:dbhost)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
           execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"password\"] = \"#{fetch(:dbpass)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
           execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"] = \"#{fetch(:dbuser)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"driver\"] = \"mysqli\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
+
+          # extra stuff for typo3 8.7
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"dbname\"] = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"database\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"user\"] = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
+          execute "echo ' $_tmp = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"Connections\"] = [];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"Connections\"][\"Default\"] = $_tmp;' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
+
         else
           cmd1 =Typo3Helper::make_set_localconf_database_settings_command(fetch(:dbname),fetch(:dbuser),fetch(:dbpass),fetch(:dbhost))
           execute "cd #{fetch(:deploy_to)} && #{cmd1}"
