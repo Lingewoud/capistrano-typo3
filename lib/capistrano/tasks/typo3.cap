@@ -555,14 +555,14 @@ deprecation_*.log
           execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"host\"] = \"#{fetch(:dbhost)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
           execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"password\"] = \"#{fetch(:dbpass)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
           execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"] = \"#{fetch(:dbuser)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
-          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"driver\"] = \"mysqli\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"driver\"] = \"mysqli\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
 
           # extra stuff for typo3 8.7
-          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"dbname\"] = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"database\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
-          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"user\"] = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
-          execute "echo ' $_tmp = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
-          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"Connections\"] = [];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
-          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"Connections\"][\"Default\"] = $_tmp;' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/additionalconfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"dbname\"] = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"database\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"user\"] = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $_tmp = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"Connections\"] = [];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"Connections\"][\"Default\"] = $_tmp;' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
 
         else
           cmd1 =Typo3Helper::make_set_localconf_database_settings_command(fetch(:dbname),fetch(:dbuser),fetch(:dbpass),fetch(:dbhost))
