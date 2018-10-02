@@ -79,7 +79,8 @@ class DT3MySQL
       version = 1
     end
 
-    filename = File.join(TYPO3_DB_DUMP_DIR,"#{fetch(:dbname)}-#{fetch(:branch)}.#{version.to_s}.sql")
+    branch = `git rev-parse --abbrev-ref HEAD`.gsub("\n",'')
+    filename = File.join(TYPO3_DB_DUMP_DIR,"#{fetch(:dbname)}-#{branch}.#{version.to_s}.sql")
     print "new image:#{fetch(:dbname)} version:#{version}\n"
     DT3MySQL::mysqldump_to(filename,table_exclude_list)
   end
