@@ -1,0 +1,132 @@
+namespace :db do
+
+  desc 'test db connection'
+  task :conntest do
+    on roles(:all) do
+      stdout = capture DT3MySQL::mysql_execute('SHOW TABLES;')
+      if stdout.include? 'denied'
+        print "\nNO CORRECT DB CONNECTION. CHECK DB SETTINGS\n\n"
+      else
+        print "\nCORRECT DB CONNECTION.\n\n"
+      end
+    end
+  end
+
+  #### LIBRARY TASKS
+  task :create_dump_dir do
+    on roles(:all) do
+       execute "cd #{fetch(:deploy_to)}/current && mkdir -p #{TYPO3_DB_DUMP_DIR}"
+    end
+  end
+  #### END LIBRARY TASKS
+
+  desc 'dump a full sql-image'
+  task :dump do
+
+    invoke 'db:create_dump_dir'
+
+    on roles(:all) do
+      execute "cd #{fetch(:deploy_to)}/current && " + DT3MySQL::dump_db_version
+    end
+  end
+
+  desc 'list dumped sql-images'
+  task :imglist do
+    images_arr = DT3MySQL::db_image_list
+    print DT3Div::hashlist_to_table_string(images_arr)
+  end
+
+  desc 'show all tables'
+  task :tables do
+    print("Show tables:\n\n")
+    on roles(:all) do
+    execute DT3MySQL::show_tables
+    end
+    print("\n")
+  end
+
+  desc 'dump an sql-image with only the essential tables'
+  task :dump_essential do
+
+    on roles(:all) do
+      table_exclude_list = %w( be_users be_sessions cache_* cf_* fe_session_data fe_sessions static_countries \
+        static_country_zones static_currencies static_languages static_territories sys_history sys_log tx_devlog \
+        zzz_deleted_* )
+
+      tables = capture DT3MySQL::show_tables
+      table_arr = tables.split("\n")
+
+      substr_arr = []
+      excltable_arr = []
+      realexclude_list = []
+
+      table_exclude_list.each {|excltable|
+        if(excltable.include? '*')
+          substr_arr << excltable[0,excltable.index('*')]
+        else
+          excltable_arr << excltable
+        end
+      }
+
+      table_arr.each {|table|
+        if(excltable_arr.include?(table))
+          realexclude_list << table
+        else
+          substr_arr.each {|substr|
+            if(table[0,substr.length] == substr)
+              realexclude_list << table
+            end
+          }
+        end
+      }
+
+      table_exclude_list = realexclude_list.uniq
+
+      execute "cd #{fetch(:deploy_to)}/current && " + DT3MySQL::dump_db_version(table_exclude_list)
+    end
+  end
+
+  desc 'import one of the sql image into the current database'
+  task :import do
+
+    images_arr = DT3MySQL::db_image_list
+    print DT3Div::hashlist_to_table_string(images_arr)
+
+    print "\nEnter the index of the image you want to import from the list above: "
+
+    imageChoosen = STDIN.gets.chomp
+    if imageChoosen=~ /^[0-9]+$/
+      imageChoosen = imageChoosen.to_i-1
+      if images_arr[(imageChoosen)].nil?
+        print "ERR. You must enter an existing index from above."
+      else
+        print "\nImporting database #{images_arr[imageChoosen]['filename']}\n"
+
+        on roles(:all) do
+          execute "cd #{fetch(:deploy_to)}/current && " + DT3MySQL.mysql_import(images_arr[imageChoosen]['filename'])
+        end
+
+      end
+    else
+      print "ERR. You must enter a number"
+    end
+  end
+
+  desc 'delete all tables'
+  task :flush do
+    print "Flush tables in DB? Enter YES to confirm: "
+    cleanConfirm = STDIN.gets.chomp
+    if(cleanConfirm.downcase=='yes')
+      on roles(:all) do
+        tablelist = capture "#{DT3MySQL.create_mysql_base_command} -e \"show tables\" | grep -v Tables_in | grep -v \"+\""
+        dropsql = ''
+        tablelist.split("\n").each {|table|
+          dropsql +="drop table #{table};"
+        }
+        execute DT3MySQL::mysql_execute(dropsql)
+
+      end
+    end
+  end
+
+end
