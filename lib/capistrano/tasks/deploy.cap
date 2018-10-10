@@ -8,12 +8,11 @@ namespace :deploy do
     end
   end
 
-  desc "remove remote git cache repository"
-  task :remove_git_cache_repo do
+
+  task "fixknownhosts" do
     on roles(:all) do
-      execute "cd #{fetch(:deploy_to)} && rm -Rf repo"
+      execute "ssh -o PasswordAuthentication=no -o StrictHostKeyChecking=no #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} uptime"
     end
   end
 
-  after :finishing, 'typo3:hooks:after_deploy'
 end

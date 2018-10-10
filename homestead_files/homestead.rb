@@ -13,7 +13,6 @@ set :git_no_cache, 1
 
 set :t3_store_db_credentials_in_addionalconf, 1
 set :t3_add_unsafe_trusted_host_pattern, 1
-set :t3_dont_upgrade_source, 1
 
 set :hs_default_upstream_php_engine, 'php56'
 

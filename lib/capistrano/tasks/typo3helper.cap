@@ -1,0 +1,139 @@
+# vim: ft=ruby:sts=2:expandtab
+
+namespace :typo3 do
+
+  namespace :helper do
+    desc "execute_post_deployment_commands"
+    task :execute_post_deployment_commands do
+      on roles(:all) do
+
+        if fetch(:t3_post_deployment_commands)
+          fetch(:t3_post_deployment_commands).each do |command|
+            execute command
+          end
+        end
+      end
+
+    end #ENDTASK
+
+    # remove deploy_to directory
+    task :rm_deploy_to do
+      on roles(:all) do
+        execute "rm -Rf #{fetch(:deploy_to)}"
+      end
+    end
+
+    # create typo3 dirs in shared
+    task :setup_shared_typo3_dirs do
+      on roles(:all) do
+        execute "cd #{fetch(:deploy_to)} && mkdir -p shared/fileadmin shared/typo3temp shared/uploads"
+      end
+    end
+
+    task :create_gitignore do
+      on roles(:all) do
+
+        ignorestring  = "
+.DS_Store
+._.DS_Store
+*~
+*.swp
+*.swo
+ENABLE_INSTALL_TOOL
+/VERSION
+temp_CACHE*.php
+deprecation_*.log
+"
+        contents = StringIO.new(ignorestring)
+        upload! contents, "#{fetch(:deploy_to)}/current/.gitignore"
+      end
+    end
+
+    # when not in deploy latest ls releases/ -1 | sort -r | head -n 1
+    task :current_relative_symlink do
+      on roles(:all) do
+        execute "cd #{fetch(:deploy_to)} && rm -f current"
+        execute "cd #{fetch(:deploy_to)} && ln -s releases/`ls -1 releases/ | sort -r | head -n 1` current"
+      end
+    end
+
+    desc "update LocalConf with correct db credentionals without SSH"
+    task :update_localconf_local do
+
+      system "echo '<?php' > dummy/typo3conf/AdditionalConfiguration.php"
+
+      if fetch(:t3_add_unsafe_trusted_host_pattern)
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"SYS\"][\"trustedHostsPattern\"] = \".*\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+      end
+
+      if fetch(:t3_store_db_credentials_in_addionalconf)
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"database\"] = \"#{fetch(:dbname)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"host\"] = \"#{fetch(:dbhost)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"password\"] = \"#{fetch(:dbpass)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"] = \"#{fetch(:dbuser)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+      else
+        cmd1 =Typo3Helper::make_set_localconf_database_settings_command(fetch(:dbname),fetch(:dbuser),fetch(:dbpass),fetch(:dbhost))
+        system "cd #{fetch(:deploy_to)} && #{cmd1}"
+
+        cmd2 = "mv #{fetch(:typo3_v6_local_conf_path)}.tmp #{fetch(:typo3_v6_local_conf_path)}"
+        system "cd #{fetch(:deploy_to)} && #{cmd2}"
+      end
+    end
+
+
+    desc "update LocalConf with correct db credentionals"
+    task :update_localconf do
+
+      on roles(:all) do
+
+        execute "echo '<?php' > #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+
+        if fetch(:t3_add_unsafe_trusted_host_pattern)
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"SYS\"][\"trustedHostsPattern\"] = \".*\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+        end
+
+        if fetch(:t3_store_db_credentials_in_addionalconf)
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"database\"] = \"#{fetch(:dbname)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"host\"] = \"#{fetch(:dbhost)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"password\"] = \"#{fetch(:dbpass)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"] = \"#{fetch(:dbuser)}\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"driver\"] = \"mysqli\";' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+
+          # extra stuff for typo3 8.7
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"dbname\"] = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"database\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"user\"] = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $_tmp = $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"Connections\"] = [];' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+          execute "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"Connections\"][\"Default\"] = $_tmp;' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/AdditionalConfiguration.php"
+
+        else
+          cmd1 =Typo3Helper::make_set_localconf_database_settings_command(fetch(:dbname),fetch(:dbuser),fetch(:dbpass),fetch(:dbhost))
+          execute "cd #{fetch(:deploy_to)} && #{cmd1}"
+
+          cmd2 = "mv #{fetch(:typo3_v6_local_conf_path)}.tmp #{fetch(:typo3_v6_local_conf_path)}"
+          execute "cd #{fetch(:deploy_to)} && #{cmd2}"
+        end
+      end
+    end
+
+    desc "write typo3conf/tsConstants.ts"
+    task :write_tsconstants do
+      on roles(:all) do
+        execute "rm -f #{fetch(:deploy_to)}/current/dummy/typo3conf/tsConstants/*.ts  || true"
+        execute "mkdir -p #{fetch(:deploy_to)}/current/dummy/typo3conf/tsConstants"
+        constantFile = "tsConstants_#{SecureRandom.hex}.ts"
+        execute "echo '# Constants written by capistrano-typo3 at: #{Time.now.strftime("%d/%m/%Y %H:%M")}' > #{fetch(:deploy_to)}/current/dummy/typo3conf/tsConstants/#{constantFile}"
+        fetch(:t3_ts_constants).each do | ts_const |
+          execute "echo '#{ts_const}' >> #{fetch(:deploy_to)}/current/dummy/typo3conf/tsConstants/#{constantFile}"
+        end
+      end
+    end
+
+    task :restart_webserver do
+      on roles(:all) do
+        execute fetch(:restart_webserver)
+      end
+    end
+  end
+
+end

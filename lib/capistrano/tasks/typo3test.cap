@@ -1,0 +1,22 @@
+# vim: ft=ruby:sts=2:expandtab
+
+namespace :typo3 do
+  namespace :test do
+
+    desc "ssh_password_less_login_rsync"
+    task :ssh_password_less_login_rsync do
+      on roles(:all) do |server|
+        begin
+          capture("ssh -o PasswordAuthentication=no -o StrictHostKeyChecking=no #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} uptime")
+        rescue
+           er =   "password less login to #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} is not possible\n"
+           er += "You need to fix this first.\n"
+           er += "solution 1: ssh-add.\n"
+           er += "solution 2: install public key on the remote server.\n"
+
+           raise "#{er}"
+        end
+      end
+    end
+  end
+end

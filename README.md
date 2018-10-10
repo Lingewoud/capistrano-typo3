@@ -1,6 +1,12 @@
 # Capistrano::Typo3 [![Code Climate](https://codeclimate.com/github/t3labcom/capistrano-typo3/badges/gpa.svg)](https://codeclimate.com/github/t3labcom/capistrano-typo3) [![Issue Count](https://codeclimate.com/github/t3labcom/capistrano-typo3/badges/issue_count.svg)](https://codeclimate.com/github/t3labcom/capistrano-typo3)
 
-Capistrano deployment tasks for TYPO3 CMS.
+Capistrano Plugin for TYPO3 deployment and development.
+
+## Features
+
+- ease setup of development environment
+- deployment model
+- lots of utility tasks optimized for typo3
 
 https://rubygems.org/gems/capistrano-typo3
 
@@ -8,25 +14,15 @@ https://rubygems.org/gems/capistrano-typo3
 
 The versions below have been tested with capistrano-typo3
 
-- 6.2.x
-- 7.x
-- 8.x
-- 9.x
+- TYPO3 6.2.x
+- TYPO3 7.x
+- TYPO3 8.x
+- TYPO3 9.x
 
 ##  Configuration
 
 At the top of lib/capistrano/tasks/typo3.cap all variables are listed
 and set to a default value.
-
-## Quick Start
-
-[[Quick Start TYPO3 9 LTS with capistrano-typo3]]
-
-
-
-
-
-
 
 ## Installation
 
@@ -66,4 +62,3 @@ about this integrations. English version will follow soon.
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create a new Pull Request
-

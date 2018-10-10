@@ -1,0 +1,172 @@
+# vim: ft=ruby:sts=2:expandtab
+
+namespace :typo3 do
+
+  namespace :vagrant do
+
+    desc "add mailhog to AdditionalConfiguration.php"
+    task "init_additional_conf_add_mailhog" do
+      on roles(:all) do
+#        execute "cd #{fetch(:deploy_to)}/current/dummy && echo '$GLOBALS[\"TYPO3_CONF_VARS\"][\"MAIL\"][\"transport\"] = \"smtp\";' >> typo3conf/AdditionalConfiguration.php"
+#        execute "cd #{fetch(:deploy_to)}/current/dummy && echo '$GLOBALS[\"TYPO3_CONF_VARS\"][\"MAIL\"][\"transport_smtp_server\"] = \"localhost:1025\";' >> typo3conf/AdditionalConfiguration.php"
+      end
+    end
+
+    desc "when homestead is not yet configured"
+    task "init_homestead_conf" do
+      invoke 'typo3:vagrant:check_branch'
+      sh "mkdir -p config"
+      sh "cd config && curl -O https://raw.githubusercontent.com/t3labcom/capistrano-typo3/master/homestead_files/vagrant.yml"
+      sh "cd config/deploy && curl -O https://raw.githubusercontent.com/t3labcom/capistrano-typo3/master/homestead_files/homestead.rb"
+      sh "curl -O https://raw.githubusercontent.com/t3labcom/capistrano-typo3/master/homestead_files/Vagrantfile"
+    end
+
+    desc "setup new homestead vagrant machine for TYPO3 development"
+    task "setup_machine" do
+      invoke 'typo3:vagrant:check_branch'
+
+      if `vagrant status | grep running`.strip != ""
+        sh "vagrant destroy"
+      end
+
+      sh "rm -f local.typo3.org"
+      sh "rm -Rf .vagrant"
+
+      if `vagrant plugin list | grep vagrant-bind`.include? 'vagrant-bindfs'
+        print "vagrant bindfs plugin is already installed\n"
+      else
+        sh "vagrant plugin install vagrant-bindfs"
+      end
+
+      sh "vagrant up"
+
+      on roles(:all) do
+        execute "sudo aptitude update"
+        execute "sudo aptitude install ruby-dev make -y"
+        execute "sudo gem install bundler"
+      end
+
+      invoke 'typo3:vagrant:set_no_site'
+      invoke 'typo3:helper:restart_webserver'
+    end
+
+
+    desc "init site from scratch (new installs)"
+    task "init_site" do
+      invoke 'typo3:vagrant:check_branch'
+
+      on roles(:all) do
+        ## PURGE IF NEEDED
+        execute "sudo rm -Rf /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo rm -f /var/current"
+        execute "sudo mysql -e 'DROP DATABASE IF EXISTS #{fetch(:dbname)}'"
+
+        ## CREATE
+        execute "sudo mkdir -p /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo chown -Rf vagrant.vagrant /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo ln -s /var/www/local.typo3.org /var/current"
+      end
+
+      on roles(:all) do
+        execute "sudo mysqladmin create #{fetch(:dbname)}"
+      end
+
+      on roles(:all) do
+        if fetch(:hs_default_upstream_php_engine)
+          execute "sudo sed -i 's/set $upstream .*/set $upstream #{fetch(:hs_default_upstream_php_engine)};/g' /etc/nginx/sites-available/local.typo3.org.conf"
+        end
+        execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/local\\.typo3\\.org\\/dummy\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+      end
+
+      invoke 'typo3:helper:restart_webserver'
+
+      print <<MSG
+
+    ----------------------------------------------------------------------
+    The website conf seems to be succesfully installed in the Homestead Vagrant
+    machine.
+
+    Open the site at http://local.typo3.org"
+
+    you can now install TYPO3
+
+    ----------------------------------------------------------------------
+MSG
+    end
+
+    desc "setup site (remote exists)"
+    task "setup_site" do
+      invoke 'typo3:vagrant:check_branch'
+
+      on roles(:all) do
+        ## PURGE IF NEEDED
+        execute "sudo rm -Rf /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo rm -f /var/current"
+        execute "sudo mysql -e 'DROP DATABASE IF EXISTS #{fetch(:dbname)}'"
+
+        ## CREATE
+        execute "sudo mkdir -p /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo chown -Rf vagrant.vagrant /var/shared/fileadmin /var/shared/typo3temp /var/shared/uploads"
+        execute "sudo ln -s /var/www/local.typo3.org /var/current"
+      end
+
+      on roles(:all) do
+        execute "sudo mysqladmin create #{fetch(:dbname)}"
+      end
+
+      invoke 'deploy:fixknownhosts'
+      invoke 'typo3:content:sync_db_from_production'
+      invoke 'typo3:content:flush_cache_in_db'
+      invoke 'typo3:helper:update_localconf'
+      invoke 'typo3:helper:write_tsconstants' #OKE
+
+      on roles(:all) do
+        if fetch(:hs_default_upstream_php_engine)
+          execute "sudo sed -i 's/set $upstream .*/set $upstream #{fetch(:hs_default_upstream_php_engine)};/g' /etc/nginx/sites-available/local.typo3.org.conf"
+        end
+        execute "sudo sed -i 's/root .*/root \"\\/var\\/www\\/local\\.typo3\\.org\\/dummy\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+      end
+
+      invoke 'typo3:helper:restart_webserver'
+      invoke 'typo3:content:sync_files_from_production'
+
+      print <<MSG
+
+    ----------------------------------------------------------------------
+    The website seems to be succesfully installed in the Homestead Vagrant
+    machine.
+
+    Open the site at http://local.typo3.org"
+
+    And live edit the website via the shortcut local.typo3.org in this
+    directory
+    ----------------------------------------------------------------------
+MSG
+    end
+
+    desc "purge .vagrant files"
+    task "purge_machine" do
+      print "OBSOLETE: you can run 'setup_machine' over and over again\n"
+    end
+
+    #desc "purge homestead site and database"
+    task "purge_site" do
+      print "OBSOLETE: you can run 'setup_site' over and over again\n"
+    end
+
+    task "check_branch" do
+      current_branch = `git branch | grep \\* | cut -d ' ' -f2`.strip
+      if current_branch != fetch(:branch)
+        raise "current branch differs from homestead.rb configuration.\n see config/deploy/homestead.rb\n\n Current branch:   #{current_branch}\n Homestead branch: #{fetch(:branch)} "
+      end
+    end
+
+    task "set_no_site" do
+      on roles(:all) do
+        execute "sudo sed -i 's/root .*/root \"\\/var\\/\";/g' /etc/nginx/sites-available/local.typo3.org.conf"
+        execute "sudo su -c 'echo \"THERE IS NO DIRECTORY local.typo3.org  ... YOU MAY WANT TO RUN cap homstead:setup_site\" > /var/index.php'"
+      end
+    end
+  end
+
+end

@@ -1,0 +1,191 @@
+# vim: ft=ruby:sts=2:expandtab
+
+namespace :typo3 do
+
+  namespace :content do
+    desc 'sync files from production'
+    task :sync_files_from_production do
+      on roles(:allow_syncfiles) do
+        if fetch(:t3_live_sync)['filesync']
+          fetch(:t3_live_sync)['filesync'].each do |key,command|
+            execute "cd #{fetch(:deploy_to)} && #{command}"
+          end
+        end
+      end
+    end
+
+    desc 'sync database from production to a local mysql'
+    task :sync_db_from_production_local_no_pass do
+
+        ignorestring = ""
+
+        if(:t3_db_sync_ignore_tables)
+
+          fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
+            ignorestring = "#{ignorestring} --ignore-table=#{fetch(:t3_live_sync)['dbsync']['dbname']}.#{ignore_tbl}"
+          end
+        end
+
+        # DUMP DATABASE TO IMAGE
+        system <<DBSYNC1
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
+          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+          #{ignorestring} \
+          #{fetch(:t3_live_sync)['dbsync']['dbname']} > /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC1
+
+        if(:t3_db_sync_ignore_tables)
+          fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
+
+            system <<DBSYNC1
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
+          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+          --no-data \
+            #{fetch(:t3_live_sync)['dbsync']['dbname']} #{ignore_tbl} >> /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC1
+          end
+        end
+
+        # COMPRESS IMAGE
+        system <<DBSYNC2
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'gzip -f /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC2
+
+        # TRANSFER IMAGE
+        system <<DBSYNC3
+          scp #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']}:/tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz \
+          /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
+DBSYNC3
+
+        # DECOMPRESS IMAGE
+        system <<DBSYNC4
+          gunzip -f /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
+DBSYNC4
+
+        # IMPORT AND REMOVE IMAGE
+        system <<DBSYNC5
+          mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} #{fetch(:dbname)} < /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']} && \
+          rm -f /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+DBSYNC5
+
+        # REMOVE IMAGE
+        system <<DBSYNC6
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'rm -f /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz'
+DBSYNC6
+
+    end
+
+    desc 'sync database from production and run sql updates'
+    task :sync_db_from_production do
+      on roles(:allow_syncdatabase) do
+
+        ignorestring = ""
+
+        if(:t3_db_sync_ignore_tables)
+
+          fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
+            ignorestring = "#{ignorestring} --ignore-table=#{fetch(:t3_live_sync)['dbsync']['dbname']}.#{ignore_tbl}"
+          end
+        end
+
+        # DUMP DATABASE TO IMAGE
+        execute <<DBSYNC1
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
+          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+          #{ignorestring} \
+          #{fetch(:t3_live_sync)['dbsync']['dbname']} > /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC1
+
+        if(:t3_db_sync_ignore_tables)
+          fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
+
+            execute <<DBSYNC1
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
+          -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
+          --no-data \
+            #{fetch(:t3_live_sync)['dbsync']['dbname']} #{ignore_tbl} >> /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC1
+          end
+        end
+
+        # COMPRESS IMAGE
+        execute <<DBSYNC2
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'gzip -f /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
+DBSYNC2
+
+        # TRANSFER IMAGE
+        execute <<DBSYNC3
+          scp #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']}:/tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz \
+          /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
+DBSYNC3
+
+        # DECOMPRESS IMAGE
+        execute <<DBSYNC4
+          gunzip -f /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz
+DBSYNC4
+
+        # IMPORT AND REMOVE IMAGE
+        execute <<DBSYNC5
+          mysql -u#{fetch(:dbuser)} -h#{fetch(:dbhost)} -p#{fetch(:dbpass)} #{fetch(:dbname)} < /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']} && \
+          rm -f /tmp/.captypo3dump-dest-#{fetch(:t3_live_sync)['dbsync']['dbname']}
+DBSYNC5
+
+        # REMOVE IMAGE
+        execute <<DBSYNC6
+          ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
+          'rm -f /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}.gz'
+DBSYNC6
+      end
+
+      invoke 'typo3:content:sql_updates'
+    end
+
+    desc 'run necessary sql queries for environment'
+    task :sql_updates do
+      on roles(:allow_syncdatabase) do
+        if fetch(:t3_sql_updates)
+          fetch(:t3_sql_updates).each do |command|
+            execute DT3MySQL::mysql_execute(command)
+          end
+        end
+      end
+    end
+
+    desc 'flush cache and session tables in database'
+    task :flush_cache_in_db do
+      on roles(:all) do
+
+        all_current_tables = capture(DT3MySQL::show_tables).split("\n")
+
+        cache_tables= %w(cache_extensions cache_hash cache_imagesizes cache_md5params cache_pages cache_pagesection cache_sys_dmail_stat cache_treelist cache_typo3temp_log cachingframework_cache_hash cachingframework_cache_hash_tags cachingframework_cache_pages cachingframework_cache_pages_tags cachingframework_cache_pagesection cachingframework_cache_pagesection_tags cf_cache_hash cf_cache_hash_tags cf_cache_pages cf_cache_pages_tags cf_cache_pagesection cf_cache_pagesection_tags cf_extbase_object cf_extbase_object_tags cf_extbase_reflection cf_extbase_reflection_tags cf_tt_news_cache cf_tt_news_cache_tags cf_tx_solr cf_tx_solr_tags tt_news_cache tt_news_cache_tags tx_realurl_chashcache tx_realurl_errorlog tx_realurl_pathcache tx_realurl_uniqalias tx_realurl_urldecodecache tx_realurl_urlencodecache tx_solr_cache tx_solr_cache_tags)
+
+        cache_tables.each do |table|
+          if all_current_tables.include?(table)
+            execute DT3MySQL::truncate_table(table)
+          end
+        end
+
+        session_tables=%w(be_sessions fe_session_data fe_sessions)
+        session_tables.each do |table|
+          if all_current_tables.include?(table)
+            execute DT3MySQL::truncate_table(table)
+          end
+        end
+      end
+    end
+  end
+
+end
+
+
