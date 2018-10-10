@@ -1,24 +1,32 @@
 # Capistrano::Typo3 [![Code Climate](https://codeclimate.com/github/t3labcom/capistrano-typo3/badges/gpa.svg)](https://codeclimate.com/github/t3labcom/capistrano-typo3) [![Issue Count](https://codeclimate.com/github/t3labcom/capistrano-typo3/badges/issue_count.svg)](https://codeclimate.com/github/t3labcom/capistrano-typo3)
 
-**Note: this plugin works only with Capistrano 3.** Please check the
-capistrano gem version you're using before installing this gem:
+Capistrano deployment tasks for TYPO3 CMS.
 
-`$ bundle show | grep capistrano`
-
-Capistrano deployment tasks for TYPO3 CMS
+https://rubygems.org/gems/capistrano-typo3
 
 ## Compatibility
 
 The versions below have been tested with capistrano-typo3
 
-* 6.2.x
-* 7.x
-* 8.x
+- 6.2.x
+- 7.x
+- 8.x
+- 9.x
 
 ##  Configuration
 
 At the top of lib/capistrano/tasks/typo3.cap all variables are listed
 and set to a default value.
+
+## Quick Start
+
+[[Quick Start TYPO3 9 LTS with capistrano-typo3]]
+
+
+
+
+
+
 
 ## Installation
 
