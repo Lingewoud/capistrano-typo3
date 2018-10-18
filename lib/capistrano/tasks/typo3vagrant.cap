@@ -14,7 +14,7 @@ namespace :typo3 do
 
     desc "when homestead is not yet configured"
     task "init_homestead_conf" do
-      invoke 'typo3:vagrant:check_branch'
+      invoke 'git:check_branch'
       sh "mkdir -p config"
       sh "cd config && curl -O https://raw.githubusercontent.com/t3labcom/capistrano-typo3/master/homestead_files/vagrant.yml"
       sh "cd config/deploy && curl -O https://raw.githubusercontent.com/t3labcom/capistrano-typo3/master/homestead_files/homestead.rb"
@@ -23,7 +23,7 @@ namespace :typo3 do
 
     desc "setup new homestead vagrant machine for TYPO3 development"
     task "setup_machine" do
-      invoke 'typo3:vagrant:check_branch'
+      invoke 'git:check_branch'
 
       if `vagrant status | grep running`.strip != ""
         sh "vagrant destroy"
@@ -53,7 +53,7 @@ namespace :typo3 do
 
     desc "init site from scratch (new installs)"
     task "init_site" do
-      invoke 'typo3:vagrant:check_branch'
+      invoke 'git:check_branch'
 
       on roles(:all) do
         ## PURGE IF NEEDED
@@ -96,7 +96,7 @@ MSG
 
     desc "setup site (remote exists)"
     task "setup_site" do
-      invoke 'typo3:vagrant:check_branch'
+      invoke 'git:check_branch'
 
       on roles(:all) do
         ## PURGE IF NEEDED
@@ -154,12 +154,6 @@ MSG
       print "OBSOLETE: you can run 'setup_site' over and over again\n"
     end
 
-    task "check_branch" do
-      current_branch = `git branch | grep \\* | cut -d ' ' -f2`.strip
-      if current_branch != fetch(:branch)
-        raise "current branch differs from homestead.rb configuration.\n see config/deploy/homestead.rb\n\n Current branch:   #{current_branch}\n Homestead branch: #{fetch(:branch)} "
-      end
-    end
 
     task "set_no_site" do
       on roles(:all) do

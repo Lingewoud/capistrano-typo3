@@ -1,0 +1,46 @@
+# vim: ft=ruby:sts=2:expandtab
+
+namespace :wp do
+
+  namespace :homestead do
+
+    desc "init site dirs from scratch (new installs)"
+    task "init_site_dirs" do
+      invoke 'git:check_branch'
+
+      on roles(:all) do
+        execute "sudo rm -Rf #{fetch(:deploy_to)}/shared/uploads"
+        execute "sudo mysql -e 'DROP DATABASE IF EXISTS #{fetch(:dbname)}'"
+
+        execute "sudo mkdir -p #{fetch(:deploy_to)}/shared/uploads"
+        execute "sudo chown vagrant.vagrant -Rf #{fetch(:deploy_to)}/shared/uploads"
+      end
+    end
+
+    desc "init site database from scratch (new installs)"
+    task "init_site_database" do
+      invoke 'git:check_branch'
+
+      on roles(:all) do
+        execute "sudo mysql -e 'CREATE DATABASE #{fetch(:dbname)} CHARACTER SET utf8 COLLATE utf8_general_ci;'"
+      end
+    end
+
+    desc "setup site (existing installs)"
+    task "setup_site" do
+      invoke 'wp:homestead:init_site_dirs'
+      invoke 'wp:homestead:init_site_database'
+
+      invoke 'deploy:fixknownhosts'
+      invoke 'sync:sync_db_from_production'
+
+      #WP update config
+
+      invoke 'sync:sync_files_from_production'
+      invoke 'typo3:helper:restart_webserver'
+    end
+
+  end
+end
+
+

@@ -6,7 +6,7 @@ namespace :typo3 do
 
     desc "init site dirs from scratch (new installs)"
     task "init_site_dirs" do
-      invoke 'typo3:vagrant:check_branch'
+      invoke 'git:check_branch'
 
       on roles(:all) do
         ## PURGE IF NEEDED
@@ -22,7 +22,7 @@ namespace :typo3 do
 
     desc "init site database from scratch (new installs)"
     task "init_site_database" do
-      invoke 'typo3:vagrant:check_branch'
+      invoke 'git:check_branch'
 
       on roles(:all) do
         execute "sudo mysql -e 'CREATE DATABASE #{fetch(:dbname)} CHARACTER SET utf8 COLLATE utf8_general_ci;'"

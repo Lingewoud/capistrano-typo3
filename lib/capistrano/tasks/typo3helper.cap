@@ -80,7 +80,6 @@ deprecation_*.log
       end
     end
 
-
     desc "update LocalConf with correct db credentionals"
     task :update_localconf do
 

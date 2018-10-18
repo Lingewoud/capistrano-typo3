@@ -21,4 +21,12 @@ namespace :git do
     end
   end
 
+  task "check_branch" do
+    current_branch = `git branch | grep \\* | cut -d ' ' -f2`.strip
+    if current_branch != fetch(:branch)
+      raise "current branch differs from homestead.rb configuration.\n see config/deploy/homestead.rb\n\n Current branch:   #{current_branch}\n Homestead branch: #{fetch(:branch)} "
+    end
+  end
+
+
 end
