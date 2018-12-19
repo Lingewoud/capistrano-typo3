@@ -11,6 +11,7 @@ TYPO3_DB_DUMP_DIR = 'db_dumps'
 load File.expand_path('../tasks/typo3.cap', __FILE__)
 load File.expand_path('../tasks/typo3content.cap', __FILE__)
 load File.expand_path('../tasks/typo3helper.cap', __FILE__)
+load File.expand_path('../tasks/typo3util.cap', __FILE__)
 load File.expand_path('../tasks/typo3homestead.cap', __FILE__)
 load File.expand_path('../tasks/typo3test.cap', __FILE__)
 load File.expand_path('../tasks/typo3vagrant.cap', __FILE__)

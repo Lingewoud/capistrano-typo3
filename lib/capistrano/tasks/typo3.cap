@@ -19,13 +19,15 @@ namespace :typo3 do
 
   desc "Setup a new production environment. Don't sync content from old production"
   task :setup_new_stage_no_sync do
-    invoke 'typo3:helper:rm_deploy_to' #OKE
-    invoke 'deploy' #OKE
-    invoke 'typo3:helper:setup_shared_typo3_dirs' #OKE
-    invoke 'typo3:helper:update_localconf' #OKE
-    invoke 'typo3:helper:write_tsconstants' #OKE
-    invoke 'typo3:helper:current_relative_symlink' #OKE
-    invoke 'typo3:helper:restart_webserver' #OKE
+    invoke 'typo3:helper:rm_deploy_to'
+    invoke 'deploy'
+
+    invoke 'typo3:helper:setup_shared_typo3_dirs' unless fetch(:t3_skip_setup_shared_typo3_dirs)
+    invoke 'typo3:helper:update_localconf' unless fetch(:t3_skip_update_localconf)
+    invoke 'typo3:helper:write_tsconstants' unless fetch(:t3_skip_write_tsconstants)
+    invoke 'typo3:helper:current_relative_symlink' unless fetch(:t3_skip_current_relative_symlink)
+    invoke 'typo3:helper:restart_webserver' unless fetch(:t3_skip_restart_webserver)
+
     invoke 'typo3:helper:execute_post_deployment_commands'
 
     print "environment has been setup, you do need to sync content from old production"
@@ -34,17 +36,17 @@ namespace :typo3 do
   desc "Setup a new staged typo3 environment when a it's already in model"
   task :setup_new_stage_sync do
 
-    invoke 'typo3:helper:rm_deploy_to' #OKE
-    invoke 'deploy' #OKE
-    invoke 'typo3:helper:setup_shared_typo3_dirs' #OKE
+    invoke 'typo3:helper:rm_deploy_to'
+    invoke 'deploy'
+    invoke 'typo3:helper:setup_shared_typo3_dirs' unless fetch(:t3_skip_setup_shared_typo3_dirs)
 
-    invoke 'typo3:content:sync_files_from_production' #OKE
-    invoke 'typo3:content:sync_db_from_production' #OKE
-    invoke 'typo3:content:flush_cache_in_db' #OKE
-    invoke 'typo3:helper:update_localconf' #OKE
-    invoke 'typo3:helper:write_tsconstants' #OKE
-    invoke 'typo3:helper:current_relative_symlink' #OKE
-    invoke 'typo3:helper:restart_webserver' #OKE
+    invoke 'typo3:content:sync_files_from_production'
+    invoke 'typo3:content:sync_db_from_production'
+    invoke 'typo3:content:flush_cache_in_db'
+    invoke 'typo3:helper:update_localconf' unless fetch(:t3_skip_update_localconf)
+    invoke 'typo3:helper:write_tsconstants' unless fetch(:t3_skip_write_tsconstants)
+    invoke 'typo3:helper:current_relative_symlink' unless fetch(:t3_skip_current_relative_symlink)
+    invoke 'typo3:helper:restart_webserver' unless fetch(:t3_skip_restart_webserver)
     invoke 'typo3:helper:execute_post_deployment_commands'
   end
 
@@ -54,20 +56,20 @@ namespace :typo3 do
     invoke 'typo3:content:sync_files_from_production'
     invoke 'typo3:content:sync_db_from_production'
     invoke 'typo3:content:flush_cache_in_db'
-    invoke 'typo3:helper:update_localconf'
-    invoke 'typo3:helper:write_tsconstants' #OKE
-    invoke 'typo3:helper:current_relative_symlink'
-    invoke 'typo3:helper:restart_webserver'
+    invoke 'typo3:helper:update_localconf' unless fetch(:t3_skip_update_localconf)
+    invoke 'typo3:helper:write_tsconstants' unless fetch(:t3_skip_write_tsconstants)
+    invoke 'typo3:helper:current_relative_symlink' unless fetch(:t3_skip_current_relative_symlink)
+    invoke 'typo3:helper:restart_webserver' unless fetch(:t3_skip_restart_webserver)
     invoke 'typo3:helper:execute_post_deployment_commands'
   end
 
   desc "deploy the typo3 way"
   task :deploy do
     invoke 'deploy'
-    invoke 'typo3:helper:update_localconf'
-    invoke 'typo3:helper:write_tsconstants' #OKE
-    invoke 'typo3:helper:current_relative_symlink'
-    invoke 'typo3:helper:restart_webserver'
+    invoke 'typo3:helper:update_localconf' unless fetch(:t3_skip_update_localconf)
+    invoke 'typo3:helper:write_tsconstants' unless fetch(:t3_skip_write_tsconstants)
+    invoke 'typo3:helper:current_relative_symlink' unless fetch(:t3_skip_current_relative_symlink)
+    invoke 'typo3:helper:restart_webserver' unless fetch(:t3_skip_restart_webserver)
     invoke 'typo3:helper:execute_post_deployment_commands'
   end
 
