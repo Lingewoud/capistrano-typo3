@@ -11,20 +11,29 @@ namespace :typo3 do
       on roles(:all) do
         ## PURGE IF NEEDED
         execute "sudo rm -Rf #{fetch(:deploy_to)}/shared/fileadmin #{fetch(:deploy_to)}/shared/typo3temp #{fetch(:deploy_to)}/shared/uploads"
-        execute "sudo mysql -e 'DROP DATABASE IF EXISTS #{fetch(:dbname)}'"
 
         ## CREATE
         execute "sudo mkdir -p #{fetch(:deploy_to)}/shared/fileadmin #{fetch(:deploy_to)}/shared/typo3temp #{fetch(:deploy_to)}/shared/uploads"
-        execute "sudo chown -Rf vagrant.vagrant #{fetch(:deploy_to)}/shared/fileadmin #{fetch(:deploy_to)}/shared/typo3temp #{fetch(:deploy_to)}/shared/uploads"
+
+        ['fileadmin','typo3temp','uploads'].each do|dir|
+          begin
+            execute "sudo chown -Rfv vagrant.vagrant #{fetch(:deploy_to)}/shared/#{dir}"
+          rescue
+            print 'could not CHOWN #{dir}. Propably already owned by vagrant.vagrant'
+          end
+        end
+
+
       end
     end
 
 
-    desc "init site database from scratch (new installs)"
+    desc "init site database from scratch (new installs) (danger: drops old)"
     task "init_site_database" do
       invoke 'git:check_branch'
 
       on roles(:all) do
+        execute "sudo mysql -e 'DROP DATABASE IF EXISTS #{fetch(:dbname)}'"
         execute "sudo mysql -e 'CREATE DATABASE #{fetch(:dbname)} CHARACTER SET utf8 COLLATE utf8_general_ci;'"
       end
     end
