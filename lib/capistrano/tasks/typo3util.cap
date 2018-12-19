@@ -1,0 +1,14 @@
+# vim: ft=ruby:sts=2:expandtab
+
+namespace :typo3 do
+  namespace :util do
+
+    desc "flush typo3temp dir"
+    task :typo3temp_rm do
+      on roles(:all) do
+        execute "rm -Rfv #{fetch(:deploy_to)}/shared/typo3temp/*"
+      end
+    end
+
+  end
+end
