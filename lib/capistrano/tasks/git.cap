@@ -1,6 +1,7 @@
 # vim: ft=ruby:sts=2:expandtab
 # -- OVERRIDES
-# Save this file as lib/capistrano/tasks/git.cap
+
+set :git_recursive_submodules, 0
 namespace :git do
 
   desc 'Copy repo to releases'
@@ -8,7 +9,11 @@ namespace :git do
     on roles(:all) do
       with fetch(:git_environmental_variables) do
         within repo_path do
-          execute :git, :clone, '-b', fetch(:branch), '--recursive', '.', release_path
+          if(fetch(:git_recursive_submodules))
+            execute :git, :clone, '-b', fetch(:branch), '--recursive', '.', release_path
+          else
+            execute :git, :clone, '-b', fetch(:branch), '.', release_path
+          end
         end
       end
     end
@@ -27,6 +32,5 @@ namespace :git do
       raise "current branch differs from homestead.rb configuration.\n see config/deploy/homestead.rb\n\n Current branch:   #{current_branch}\n Homestead branch: #{fetch(:branch)} "
     end
   end
-
 
 end
