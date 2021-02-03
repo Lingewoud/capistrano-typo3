@@ -57,6 +57,29 @@ deprecation_*.log
       end
     end
 
+    desc "update LocalConf with correct db credentionals without SSH"
+    task :update_localconf_local do
+
+      system "echo '<?php' > dummy/typo3conf/AdditionalConfiguration.php"
+
+      if fetch(:t3_add_unsafe_trusted_host_pattern)
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"SYS\"][\"trustedHostsPattern\"] = \".*\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+      end
+
+      if fetch(:t3_store_db_credentials_in_addionalconf)
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"database\"] = \"#{fetch(:dbname)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"host\"] = \"#{fetch(:dbhost)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"password\"] = \"#{fetch(:dbpass)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+        system "echo ' $GLOBALS[\"TYPO3_CONF_VARS\"][\"DB\"][\"username\"] = \"#{fetch(:dbuser)}\";' >> dummy/typo3conf/AdditionalConfiguration.php"
+      else
+        cmd1 =Typo3Helper::make_set_localconf_database_settings_command(fetch(:dbname),fetch(:dbuser),fetch(:dbpass),fetch(:dbhost))
+        system "cd #{fetch(:deploy_to)} && #{cmd1}"
+
+        cmd2 = "mv #{fetch(:typo3_v6_local_conf_path)}.tmp #{fetch(:typo3_v6_local_conf_path)}"
+        system "cd #{fetch(:deploy_to)} && #{cmd2}"
+      end
+    end
+
     desc "update LocalConf with correct db credentionals"
     task :update_localconf do
 

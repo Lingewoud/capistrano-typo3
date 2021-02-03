@@ -1,8 +1,11 @@
 # CHANGELOG
 
+
+## capistrano-typo3 0.5.5
+- restore passwordless sync for local syncs e.g. CCV certificatie
+
 ## capistrano-typo3 0.5.4
 - make git recursive optional
-
 
 ## capistrano-typo3 0.3.2
 - make mysql dump transfer possible on same server with different users

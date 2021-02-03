@@ -19,8 +19,7 @@ namespace :typo3 do
 
         ignorestring = ""
 
-        if(:t3_db_sync_ignore_tables)
-
+        if(defined? :t3_db_sync_ignore_tables)
           fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
             ignorestring = "#{ignorestring} --ignore-table=#{fetch(:t3_live_sync)['dbsync']['dbname']}.#{ignore_tbl}"
           end
@@ -29,19 +28,19 @@ namespace :typo3 do
         # DUMP DATABASE TO IMAGE
         system <<DBSYNC1
           ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          'mysqldump --no-tablespaces -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
           -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
           -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
           #{ignorestring} \
           #{fetch(:t3_live_sync)['dbsync']['dbname']} > /tmp/.captypo3dump-src-#{fetch(:t3_live_sync)['dbsync']['dbname']}'
 DBSYNC1
 
-        if(:t3_db_sync_ignore_tables)
+        if(defined? :t3_db_sync_ignore_tables)
           fetch(:t3_db_sync_ignore_tables).each do | ignore_tbl |
 
             system <<DBSYNC1
           ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          'mysqldump --no-tablespaces -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
           -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
           -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
           --no-data \
