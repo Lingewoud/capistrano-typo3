@@ -96,7 +96,7 @@ DBSYNC6
         # DUMP DATABASE TO IMAGE
         execute <<DBSYNC1
           ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          'mysqldump --no-tablespaces -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
           -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
           -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
           #{ignorestring} \
@@ -108,7 +108,7 @@ DBSYNC1
 
             execute <<DBSYNC1
           ssh #{fetch(:t3_live_sync)['dbsync']['ssh_user']}@#{fetch(:t3_live_sync)['dbsync']['ssh_server']} \
-          'mysqldump -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
+          'mysqldump --no-tablespaces -u#{fetch(:t3_live_sync)['dbsync']['dbuser']} \
           -h#{fetch(:t3_live_sync)['dbsync']['dbhost']} \
           -p#{fetch(:t3_live_sync)['dbsync']['dbpass']} \
           --no-data \
